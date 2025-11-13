@@ -1,0 +1,611 @@
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Directional Rain Exposure — Web Simulator</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:#0b1220; color:#e6e9ef; overflow:hidden; }
+    .app { display:flex; gap:16px; padding:16px; flex-wrap:nowrap; justify-content:center; align-items:flex-start; height:100%; box-sizing:border-box; max-width:1280px; margin:0 auto; }
+    .panel { flex:0 0 360px; max-width:380px; background:#121a2b; border:1px solid #1f2a44; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.35); max-height:calc(100% - 16px); overflow-y:auto; }
+    .panel-header { display:flex; flex-direction:column; gap:4px; }
+    .preset-bar { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
+    .preset-btn { flex:1; min-width:120px; padding:6px 10px; border-radius:999px; background:#18243d; border:1px solid #223152; color:#d4def9; font-size:13px; cursor:pointer; }
+    .preset-btn.active { background:#2f4c80; border-color:#4c6fb3; color:#fff; box-shadow:0 0 0 1px rgba(140,176,255,0.35); }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px 12px; align-items:center; }
+    .grid label { color:#a8b3cf; font-size:12px; }
+    .grid input, .grid select { width:100%; padding:6px 8px; border-radius:8px; border:1px solid #2a3554; background:#0f1525; color:#e6e9ef; }
+    .btns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+    button { padding:8px 12px; border-radius:10px; border:1px solid #2a3554; background:#182036; color:#e6e9ef; cursor:pointer; }
+    button:hover { background:#202a46; }
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:12px; }
+    .stat-card { padding:10px 12px; background:#0c1427; border:1px solid #1f2340; border-radius:10px; display:flex; flex-direction:column; gap:4px; }
+    .stat-label { font-size:11px; letter-spacing:0.04em; text-transform:uppercase; color:#7f8fb2; }
+    .stat-value { font-size:16px; font-weight:600; color:#fff; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#1a2846; color:#b9c4e2; font-size:12px; border:1px solid #2a3554; }
+    .title { font-weight:700; font-size:18px; margin-bottom:8px; }
+    .sub { color:#9aa7c7; font-size:12px; margin-top:4px; }
+    .canvas-wrap { position:relative; flex:1 1 520px; height:calc(100% - 16px); min-height:420px; background:#0d1528; border:1px solid #1f2a44; border-radius:16px; overflow:hidden; }
+    canvas { display:block; width:100%; height:100%; background:linear-gradient(180deg,#0d1528,#0a1222); }
+    .hud { position:absolute; left:12px; top:12px; right:12px; display:flex; justify-content:space-between; pointer-events:none; }
+    .card { background:rgba(9,14,30,0.75); border:1px solid rgba(56,76,120,0.6); border-radius:12px; padding:10px 12px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    .bar { height:10px; background:#121a2b; border:1px solid #223055; border-radius:999px; overflow:hidden; }
+    .bar > div { height:100%; background:linear-gradient(90deg,#3aa0ff,#7b9cff); width:0%; }
+    a.link { color:#8bb6ff; text-decoration:none; }
+    .tests { margin-top:10px; font-size:12px; color:#b5c1df; }
+    .pass { color:#7fe1a7; }
+    .fail { color:#ff9c9c; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+    @media (max-width:900px){
+      html, body { overflow:auto; }
+      .app { flex-wrap:wrap; height:auto; }
+      .panel { flex:1 1 100%; max-width:none; max-height:none; }
+      .canvas-wrap { flex:1 1 100%; height:55vh; }
+      .preset-btn { min-width:100px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="title">Directional Rain Exposure</div>
+      <div class="sub">In‑browser particle sim with objective counters. Compare to your model.</div>
+    </div>
+
+    <div class="preset-bar" role="group" aria-label="Preset scenarios">
+      <button type="button" class="preset-btn" data-preset="vertical">Vertical</button>
+      <button type="button" class="preset-btn" data-preset="headwind30">Headwind 30°</button>
+      <button type="button" class="preset-btn active" data-preset="tailwind45">Tailwind 45°</button>
+      <button type="button" class="preset-btn" data-preset="tailwind60">Tailwind 60°</button>
+    </div>
+
+    <div class="grid">
+      <label for="preset" class="sr-only">Preset</label>
+      <select id="preset" class="sr-only">
+        <option value="vertical">Vertical rain (θ=0°)</option>
+        <option value="headwind30">Headwind (θ=30°)</option>
+        <option value="tailwind45" selected>Tailwind (θ=45°)</option>
+        <option value="tailwind60">Strong tailwind (θ=60°)</option>
+      </select>
+
+      <label for="vp">V<sub>P</sub> (m/s)</label>
+      <input id="vp" type="number" step="0.1" value="1.4" />
+
+      <label for="vr">V<sub>R</sub> (m/s)</label>
+      <input id="vr" type="number" step="0.1" value="6" />
+
+      <label for="theta">θ (deg)</label>
+      <input id="theta" type="number" step="1" value="45" />
+
+      <label for="tailwind">Tailwind?</label>
+      <select id="tailwind">
+        <option value="1" selected>Yes</option>
+        <option value="-1">No (Headwind)</option>
+        <option value="0">Vertical</option>
+      </select>
+
+      <label for="dL">ΔL (m)</label>
+      <input id="dL" type="number" step="10" value="200" />
+
+      <label for="conc">C (L/m³)</label>
+      <input id="conc" type="number" step="0.1" value="0.5" min="0.01" />
+
+      <label for="dropDiam">d<sub>drop</sub> (mm)</label>
+      <input id="dropDiam" type="number" step="0.1" value="2.0" min="0.5" max="6" />
+
+      <label for="depth">Slice depth (m)</label>
+      <input id="depth" type="number" step="0.1" value="0.5" min="0.1" />
+
+      <label for="simSpeed">Sim speed</label>
+      <select id="simSpeed">
+        <option value="1">1× real time</option>
+        <option value="2">2×</option>
+        <option value="5">5×</option>
+        <option value="10">10×</option>
+      </select>
+    </div>
+
+    <div class="btns">
+      <button id="apply">Apply</button>
+      <button id="start">Start</button>
+      <button id="pause">Pause</button>
+      <button id="reset">Reset</button>
+      <button id="export">Export CSV</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><span class="stat-label">Distance</span><span class="stat-value"><span id="dist">0.0</span> m</span></div>
+      <div class="stat-card"><span class="stat-label">Time</span><span class="stat-value"><span id="time">0.0</span> s</span></div>
+      <div class="stat-card"><span class="stat-label">Top</span><span class="stat-value" id="Ltop">0.0 L</span></div>
+      <div class="stat-card"><span class="stat-label">Front</span><span class="stat-value" id="Lfront">0.0 L</span></div>
+      <div class="stat-card"><span class="stat-label">Back</span><span class="stat-value" id="Lback">0.0 L</span></div>
+      <div class="stat-card"><span class="stat-label">Total</span><span class="stat-value" id="Ltot">0.0 L</span></div>
+      <div class="stat-card"><span class="stat-label">Sim speed</span><span class="stat-value" id="speedLabel">1×</span></div>
+      <div class="stat-card"><span class="stat-label">Drops / m³</span><span class="stat-value" id="dropsPerM3">0</span></div>
+      <div class="stat-card"><span class="stat-label">Flux</span><span class="stat-value" id="fluxLps">0 L/s</span></div>
+      <div class="stat-card"><span class="stat-label">Sampled</span><span class="stat-value" id="sampleRatio">0%</span></div>
+    </div>
+
+    <div style="height:8px"></div>
+    <div class="pill">Model vs Simulation</div>
+    <div class="stat-grid">
+      <div class="stat-card"><span class="stat-label">K<sub>TOT</sub> model</span><span class="stat-value" id="Kmodel">0.0</span></div>
+      <div class="stat-card"><span class="stat-label">Error</span><span class="stat-value" id="Kerr">0.0 L (0%)</span></div>
+    </div>
+
+    <div style="height:8px"></div>
+    <div class="pill">Progress</div>
+    <div class="bar"><div id="bar"></div></div>
+
+    <div class="tests" id="tests">Tests: running…</div>
+
+    <div class="sub" style="margin-top:10px">Notes: Particles use full rain vector; deposition counts by face (top/front/back). For publication‑grade CFD, use Eulerian (RANS) + DPM.</div>
+  </div>
+
+  <div class="canvas-wrap">
+    <div class="hud">
+      <div class="card"><b>V<sub>P</sub></b> <span id="hudVP">1.4</span> m/s &nbsp; | &nbsp; <b>V<sub>R</sub></b> <span id="hudVR">6</span> m/s @ <span id="hudTH">45</span>°</div>
+      <div class="card"><b>θ</b>: <span id="hudTheta">45</span>° &nbsp; <b>Tailwind:</b> <span id="hudTw">yes</span></div>
+    </div>
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    cv.width = r.width * DPR; cv.height = r.height * DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize); resize();
+
+  // DOM helpers
+  const qs = (id) => document.getElementById(id);
+  const preset = qs('preset');
+  const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
+  const speedSel = qs('simSpeed');
+  let timeScale = +speedSel.value;
+  const inp = {
+    vp: qs('vp'),
+    vr: qs('vr'),
+    theta: qs('theta'),
+    tailwind: qs('tailwind'),
+    dL: qs('dL'),
+    conc: qs('conc'),
+    dropDiam: qs('dropDiam'),
+    depth: qs('depth'),
+  };
+  const hud = { VP: qs('hudVP'), VR: qs('hudVR'), TH: qs('hudTH'), theta: qs('hudTheta'), tw: qs('hudTw') };
+  const out = { dist: qs('dist'), time: qs('time'), Ltop: qs('Ltop'), Lfront: qs('Lfront'), Lback: qs('Lback'), Ltot: qs('Ltot'), Kmodel: qs('Kmodel'), Kerr: qs('Kerr'), bar: qs('bar'), speed: qs('speedLabel'), dropsPerM3: qs('dropsPerM3'), flux: qs('fluxLps'), sampleRatio: qs('sampleRatio') };
+  const testsEl = qs('tests');
+
+  // World units
+  const W = () => cv.width / DPR; const H = () => cv.height / DPR;
+
+  // Physical avatar dimensions (meters) and visual state
+  const PERSON_HEIGHT_M = 1.8;
+  const PERSON_WIDTH_M = 0.5;
+  const SKY_BUFFER_M = 0.4;
+  const GROUND_BUFFER_M = 0.1;
+  const HIT_TOL_PX = 6;
+  const MAX_RENDER_PARTICLES = 24000;
+  const MIN_RENDER_PARTICLES = 800;
+  const MIN_SPAWN_RATE = 2;
+  const person = { x: 0, w: 0, h: 0 };
+
+
+  // Simulation state
+  let sim = null; let running = false; let rafId = 0; let lastT = 0; let acc = 0; // fixed-step accumulator
+
+  function Hfun(x){ return x>0 ? 1:0; }
+  function formatLarge(n){
+    if(!isFinite(n)) return '0';
+    if(Math.abs(n) >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M';
+    if(Math.abs(n) >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'') + 'k';
+    return n.toFixed(0);
+  }
+
+  function areaProps(depthM){
+    const top = PERSON_WIDTH_M * depthM;
+    const front = PERSON_HEIGHT_M * depthM;
+    const back = front;
+    const atot = top + front + back;
+    return { top, front, back, atot };
+  }
+  function modelKTOT(VP, VR, thDeg, tail){
+    const th = thDeg * Math.PI/180;
+    const VRx = (tail===0?0:tail) * VR * Math.sin(th);
+    const depthM = Math.max(0.1, +inp.depth.value || 1);
+    const areas = areaProps(depthM);
+    const alpha = areas.top / areas.atot;
+    const beta = areas.front / areas.atot;
+    const delta = areas.back / areas.atot;
+    const top = alpha * VR * Math.cos(th);
+    const col = Math.abs(VP) * beta * (1 - Hfun(-VRx - 0.01));
+    const mot = Math.abs(VP + VRx) * ( Hfun(VP*VRx) * delta + Hfun(-VP*VRx) * beta );
+    const factor = top + col + mot;
+    const travelTime = (+inp.dL.value) / Math.max(Math.abs(VP), 1e-3);
+    const KT = (+inp.conc.value) * travelTime * areas.atot * factor;
+    return { KT, top, col, mot, factor, VRx, VRz: VR*Math.cos(th) };
+  }
+
+  function highlightPreset(name){
+    presetButtons.forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.preset === name);
+    });
+    preset.value = name;
+  }
+
+  function setPreset(name){
+    if(name==='vertical'){ inp.theta.value = 0; inp.vr.value = 6; inp.tailwind.value = 0; }
+    if(name==='headwind30'){ inp.theta.value = 30; inp.vr.value = 4; inp.tailwind.value = -1; }
+    if(name==='tailwind45'){ inp.theta.value = 45; inp.vr.value = 6; inp.tailwind.value = 1; }
+    if(name==='tailwind60'){ inp.theta.value = 60; inp.vr.value = 6; inp.tailwind.value = 1; }
+    highlightPreset(name);
+    applyUI();
+  }
+
+  function applyUI(){
+    const VP = +inp.vp.value, VR = +inp.vr.value, th = +inp.theta.value, tail = +inp.tailwind.value;
+    hud.VP.textContent = VP.toFixed(1); hud.VR.textContent = VR.toFixed(1); hud.TH.textContent = th.toFixed(0); hud.theta.textContent = th.toFixed(0); hud.tw.textContent = tail==1?'yes':(tail==-1?'no':'vertical');
+    // Update model prediction
+    const m = modelKTOT(VP, VR, th, tail);
+    out.Kmodel.textContent = `${m.KT.toFixed(1)} L`;
+  }
+
+  preset.addEventListener('change', e=>{
+    setPreset(e.target.value);
+    rebuildAndRender({ resetRunner: true });
+  });
+  presetButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const name = btn.dataset.preset;
+      setPreset(name);
+      rebuildAndRender({ resetRunner: true });
+    });
+  });
+  speedSel.addEventListener('change', ()=>{
+    timeScale = Math.max(0.5, +speedSel.value || 1);
+    if(sim){
+      sim.timeScale = timeScale;
+      updateUI();
+    }
+  });
+  qs('apply').addEventListener('click', ()=>{
+    applyUI();
+    rebuildAndRender({ resetRunner: true });
+  });
+
+  // Telemetry logger
+  const logs = [];
+  function logRow(t){
+    logs.push([t.toFixed(2), sim.dist.toFixed(2), sim.VP.toFixed(2), sim.VR.toFixed(2), sim.theta.toFixed(1), sim.tail, sim.Ltop.toFixed(6), sim.Lfront.toFixed(6), sim.Lback.toFixed(6), sim.Ltot.toFixed(6)]);
+  }
+  qs('export').addEventListener('click', ()=>{
+    const header = 'time_s,dist_m,VP,VR,theta_deg,tailSign,L_top_L,L_front_L,L_back_L,L_total_L\n';
+    const body = logs.map(r=>r.join(',' )).join('\n');
+    const blob = new Blob([header + body], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'rain_exposure_sim.csv'; a.click(); URL.revokeObjectURL(url);
+  });
+
+  function resetSim({ resetRunner = true } = {}){
+    const pathLengthM = Math.max(1, +inp.dL.value);
+    const sliceDepthM = Math.max(0.1, +inp.depth.value || 0.5);
+    const VP = +inp.vp.value, VR = +inp.vr.value, th = +inp.theta.value, tail = +inp.tailwind.value;
+    const thR = th*Math.PI/180;
+    const VRx = (tail===0?0:tail) * VR * Math.sin(thR);
+    const VRz = Math.max(0.1, VR * Math.cos(thR));
+    const concVal = Math.max(0.01, +inp.conc.value);
+    const dropDiamMm = Math.max(0.5, +inp.dropDiam.value || 2);
+    const dropDiamM = dropDiamMm / 1000;
+    const dropVolumeL = (4/3) * Math.PI * Math.pow(dropDiamM/2, 3) * 1000;
+
+    const padX = 40, padZ = 30;
+    const usableWidthPx = Math.max(200, W() - padX*2);
+    const worldHeightM = PERSON_HEIGHT_M + SKY_BUFFER_M + GROUND_BUFFER_M;
+    const usableHeightPx = Math.max(200, H() - padZ*2);
+    const pxPerMX = usableWidthPx / pathLengthM;
+    const pxPerMY = Math.min(pxPerMX, usableHeightPx / worldHeightM);
+    const worldHeightPx = worldHeightM * pxPerMY;
+    const x0 = padX;
+    const x1 = x0 + pathLengthM * pxPerMX;
+    const groundZ = H() - padZ;
+    const ceilingZ = Math.max(padZ, groundZ - worldHeightPx);
+    const spawnZ = ceilingZ;
+    const fallDist = groundZ - spawnZ;
+    const vxPix = VRx * pxPerMX;
+    const vzPix = VRz * pxPerMY;
+    const tFall = fallDist / Math.max(0.1, vzPix);
+    const driftX = vxPix * tFall;
+    const marginM = Math.min(2, 0.1 * pathLengthM);
+    const marginPx = marginM * pxPerM;
+    const emitMinX = x0 - marginPx - Math.max(0, driftX);
+    const emitMaxX = x1 + marginPx + Math.max(0, -driftX);
+
+    const curtainAreaM2 = pathLengthM * sliceDepthM;
+    const dropsPerM3 = concVal / Math.max(dropVolumeL, 1e-9);
+    const fluxLps = concVal * VRz * curtainAreaM2;
+    const dropsPerSecPhysical = Math.max(1e-6, fluxLps / Math.max(dropVolumeL, 1e-9));
+    const desiredParticles = dropsPerSecPhysical * tFall;
+    const cappedParticles = Math.min(MAX_RENDER_PARTICLES, Math.max(MIN_RENDER_PARTICLES, desiredParticles));
+    const spawnPerSec = Math.max(MIN_SPAWN_RATE, Math.min(dropsPerSecPhysical, cappedParticles / Math.max(tFall, 0.05)));
+    const sampleRatio = Math.min(1, spawnPerSec / Math.max(dropsPerSecPhysical, 1e-6));
+    const weightL = fluxLps / Math.max(spawnPerSec, 1e-6);
+
+    if(resetRunner){
+      person.w = PERSON_WIDTH_M * pxPerMX;
+      person.h = PERSON_HEIGHT_M * pxPerMY;
+      person.x = x0 + 0.05 * person.w;
+    }
+
+    sim = {
+      VP, VR, theta: th, tail,
+      VRx, VRz,
+      pxPerMX,
+      mx: pxPerMX,
+      vxPix, vzPix,
+      x0, x1,
+      z0: ceilingZ, z1: groundZ,
+      spawnZ, groundZ,
+      emitMinX, emitMaxX,
+      pathLength: pathLengthM,
+      dist:0, time:0,
+      Ltop:0, Lfront:0, Lback:0, Ltot:0,
+      particles:[],
+      spawnPerSec,
+      targetLps: fluxLps,
+      weightL,
+      tFall,
+      timeScale,
+      spawnDebt: 0,
+      stats: {
+        dropDiamMm,
+        dropVolumeL,
+        dropsPerM3,
+        fluxLps,
+        depthM: sliceDepthM,
+        sampleRatio
+      }
+    };
+
+    const seedCount = Math.round(Math.min(cappedParticles, spawnPerSec * Math.min(tFall, 3)));
+    for(let i=0;i<seedCount;i++){
+      const age = Math.random() * tFall;
+      const xSpawn = emitMinX + Math.random() * (emitMaxX - emitMinX);
+      const x = xSpawn + vxPix * age;
+      const z = spawnZ + vzPix * age;
+      if(z >= spawnZ && z <= groundZ){
+        sim.particles.push({x, z, vx: vxPix, vz: vzPix, wL: weightL});
+      }
+    }
+
+    out.dropsPerM3.textContent = formatLarge(dropsPerM3);
+    out.flux.textContent = fluxLps.toFixed(2) + ' L/s';
+    out.sampleRatio.textContent = (sampleRatio*100).toFixed(1) + '%';
+
+    logs.length = 0; logRow(0);
+  }
+
+  function rebuildAndRender(options){
+    running = false;
+    resetSim(options);
+    draw();
+    updateUI();
+  }
+
+  function start(){
+    if(!sim || sim.dist >= sim.pathLength){
+      rebuildAndRender({ resetRunner: true });
+    }
+    running = true;
+  }
+  function pause(){ running = false; }
+  function reset(){ rebuildAndRender({ resetRunner: true }); }
+
+  qs('start').addEventListener('click', start);
+  qs('pause').addEventListener('click', pause);
+  qs('reset').addEventListener('click', reset);
+
+  function updateUI(){
+    if(!sim) return;
+    out.dist.textContent = sim.dist.toFixed(1);
+    out.time.textContent = sim.time.toFixed(1);
+    out.Ltop.textContent = `${sim.Ltop.toFixed(2)} L`;
+    out.Lfront.textContent = `${sim.Lfront.toFixed(2)} L`;
+    out.Lback.textContent = `${sim.Lback.toFixed(2)} L`;
+    out.Ltot.textContent = `${sim.Ltot.toFixed(2)} L`;
+    // Model compare
+    const m = modelKTOT(sim.VP, sim.VR, sim.theta, sim.tail);
+    const errL = sim.Ltot - m.KT; const errP = m.KT>0 ? 100*(sim.Ltot/m.KT - 1) : 0;
+    out.Kerr.textContent = `${errL.toFixed(1)} L (${errP.toFixed(1)}%)`;
+    const prog = Math.min(1, sim.dist / Math.max(1, sim.pathLength));
+    out.bar.style.width = (prog*100).toFixed(1)+'%';
+    const speedDisplay = (sim.timeScale || timeScale).toFixed(1).replace(/\.0$/, '');
+    out.speed.textContent = `${speedDisplay}×`;
+    if(sim.stats){
+      out.dropsPerM3.textContent = formatLarge(sim.stats.dropsPerM3);
+      out.flux.textContent = sim.stats.fluxLps.toFixed(2) + ' L/s';
+      out.sampleRatio.textContent = (sim.stats.sampleRatio*100).toFixed(1) + '%';
+    }
+  }
+
+  function spawn(dt){
+    // Poisson-like spawning along TOP; full VR vector advects drops
+    sim.spawnDebt += sim.spawnPerSec * dt;
+    let N = Math.min(MAX_RENDER_PARTICLES, Math.floor(sim.spawnDebt));
+    const capacity = Math.max(0, MAX_RENDER_PARTICLES - sim.particles.length);
+    if(capacity <= 0){ sim.spawnDebt = 0; return; }
+    N = Math.min(N, capacity);
+    sim.spawnDebt -= N;
+    for(let i=0;i<N;i++){
+      const x = sim.emitMinX + Math.random()*(sim.emitMaxX - sim.emitMinX);
+      const z = sim.spawnZ; // just above the top boundary
+      sim.particles.push({x, z, vx: sim.vxPix, vz: sim.vzPix, wL: sim.weightL});
+    }
+  }
+
+  function integrate(fixedDt){
+    // Person movement only while running
+    if(running){
+      person.x += (sim.VP * sim.mx) * fixedDt;
+      const maxX = sim.x1 - person.w;
+      if(person.x > maxX){ person.x = maxX; }
+      if(person.x < sim.x0){ person.x = sim.x0; }
+      sim.dist = Math.min(+inp.dL.value, sim.dist + sim.VP * fixedDt);
+      sim.time += fixedDt;
+    }
+
+    // Rain always falls; remove only on ground or player
+    const runnerVx = running ? sim.VP : 0; // m/s
+    const relVx = sim.VRx - runnerVx;
+    const relVz = sim.VRz;
+    const px0 = person.x, px1 = person.x + person.w;
+    const pz0 = sim.z1 - person.h, pz1 = sim.z1;
+    for(let k=sim.particles.length-1;k>=0;k--){
+      const p = sim.particles[k];
+      p.x += p.vx * fixedDt; p.z += p.vz * fixedDt;
+
+      // ground impact
+      if(p.z >= sim.groundZ){ sim.particles.splice(k,1); continue; }
+
+      // player impact (count only while running)
+      if(p.x>=px0 && p.x<=px1 && p.z<=pz1 && p.z>=pz0){
+        if(running){
+          const nearTop = Math.abs(p.z - pz0) <= HIT_TOL_PX;
+          const nearFront = Math.abs(p.x - px1) <= HIT_TOL_PX;
+          const nearBack = Math.abs(p.x - px0) <= HIT_TOL_PX;
+          let credited = false;
+          if(relVz > 0 && nearTop){
+            sim.Ltop += p.wL; credited = true;
+          } else if(relVx < 0 && nearFront){
+            sim.Lfront += p.wL; credited = true;
+          } else if(relVx > 0 && nearBack){
+            sim.Lback += p.wL; credited = true;
+          } else {
+            if(Math.abs(relVx) > Math.abs(relVz)){
+              if(relVx < 0){ sim.Lfront += p.wL; credited = true; }
+              else if(relVx > 0){ sim.Lback += p.wL; credited = true; }
+            }
+            if(!credited){
+              sim.Ltop += p.wL; credited = true;
+            }
+          }
+          if(credited){ sim.Ltot += p.wL; }
+        }
+        sim.particles.splice(k,1); // absorbed by player
+      }
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W(),H());
+    if(!sim) return;
+    const x0 = sim.x0, x1 = sim.x1, z0 = sim.z0, z1 = sim.z1;
+
+    // ground and bounds
+    ctx.strokeStyle = '#26355b'; ctx.lineWidth = 1;
+    ctx.strokeRect(x0, z0, x1-x0, z1-z0);
+
+    // person
+    ctx.fillStyle = 'rgba(120,160,255,0.10)';
+    ctx.strokeStyle = '#8bb6ff';
+    ctx.lineWidth = 2;
+    ctx.fillRect(person.x, z1-person.h, person.w, person.h);
+    ctx.strokeRect(person.x, z1-person.h, person.w, person.h);
+
+    // label surfaces
+    ctx.fillStyle = '#9ab7ff'; ctx.font = '12px system-ui';
+    ctx.fillText('front', person.x+person.w+6, z1-person.h/2);
+    ctx.fillText('back', person.x-34, z1-person.h/2);
+    ctx.fillText('top', person.x+2, z1-person.h-8);
+
+    // velocity arrows near top-left
+    const ax = x0 + 8, az = z0 + 24;
+    ctx.strokeStyle = '#ff8b8b';
+    arrow(ax, az, ax + 40, az); ctx.fillStyle = '#ff8b8b'; ctx.fillText('V_P', ax+44, az+4);
+    ctx.strokeStyle = '#8bd1ff';
+    const thR2 = (+inp.theta.value)*Math.PI/180;
+    const vrx_len = 26*Math.sin(thR2) * ((+inp.tailwind.value)>=0?+1:-1); const vrz_len = 26*Math.cos(thR2);
+    arrow(ax, az, ax + vrx_len, az + vrz_len);
+    ctx.fillStyle = '#8bd1ff'; ctx.fillText('V_R', ax+32, az+18);
+
+    // particles
+    ctx.fillStyle = '#7fb6ff';
+    for(const p of sim.particles){ ctx.fillRect(p.x, p.z, 2, 2); }
+  }
+
+  function arrow(x0,y0,x1,y1){
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    const ang = Math.atan2(y1-y0, x1-x0); const len=7;
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x1 - len*Math.cos(ang - Math.PI/6), y1 - len*Math.sin(ang - Math.PI/6));
+    ctx.lineTo(x1 - len*Math.cos(ang + Math.PI/6), y1 - len*Math.sin(ang + Math.PI/6));
+    ctx.closePath(); ctx.fill();
+  }
+
+  function loop(ts){
+    const dt = Math.min(0.05, (ts - lastT)/1000 || 0.016); lastT = ts; acc += dt;
+    // fixed step for numerical stability
+    const h = 1/60; // 60 Hz
+    while(acc >= h){
+      if(sim){
+        sim.timeScale = timeScale;
+        const stepDt = h * sim.timeScale;
+        const prevTime = sim.time;
+        if(sim.dist >= sim.pathLength) running = false; // stop person, keep rain
+        spawn(stepDt); integrate(stepDt); updateUI();
+        if(running && Math.floor(sim.time*10) !== Math.floor(prevTime*10)) logRow(sim.time);
+      }
+      acc -= h;
+    }
+    draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  // ---- Self-tests (model sanity against paper numbers) ----
+  function approx(a,b,eps){ return Math.abs(a-b) <= eps; }
+  function runTests(){
+    const cases = [
+      // Walking cases (from paper table)
+      {name:'Vertical rain (walk)', VP:1.4, VR:6, th:0, tail:0, expect:255.5, tol:6.0},
+      {name:'Headwind 30° (walk)', VP:1.4, VR:4, th:30, tail:-1, expect:138.9, tol:6.0},
+      {name:'Tailwind 45° (walk)', VP:1.4, VR:6, th:45, tail:1, expect:416.6, tol:8.0},
+      {name:'Tailwind 60° (walk)', VP:1.4, VR:6, th:60, tail:1, expect:414.0, tol:8.0},
+      // Running cases (from paper table)
+      {name:'Vertical rain (run)', VP:3.3, VR:6, th:0, tail:0, expect:145.0, tol:6.0},
+      {name:'Headwind 30° (run)', VP:3.3, VR:4, th:30, tail:-1, expect:72.5, tol:6.0},
+      {name:'Tailwind 45° (run)', VP:3.3, VR:6, th:45, tail:1, expect:244.9, tol:8.0},
+      {name:'Tailwind 60° (run)', VP:3.3, VR:6, th:60, tail:1, expect:243.8, tol:8.0}
+    ];
+
+    // Extra invariant tests: flux through ground without runner ~= C*VRz*width (computed target)
+    const th = +inp.theta.value; const VR = +inp.vr.value; const VRz = VR*Math.cos(th*Math.PI/180);
+    const width_m = Math.max(1, +inp.dL.value);
+    const fluxExpected = (+inp.conc.value) * VRz * width_m * Math.max(0.1, +inp.depth.value || 0.5);
+
+    let pass=0, fail=0; const lines=[];
+    for(const c of cases){
+      const km = modelKTOT(c.VP,c.VR,c.th,c.tail).KT; const ok = approx(km,c.expect,c.tol);
+      if(ok){ pass++; } else { fail++; }
+      lines.push(`${c.name}: model=${km.toFixed(1)} L vs ${c.expect} L => ${ok?'PASS':'FAIL'}`);
+    }
+    lines.push(`Flux sanity (no runner): expected ≈ ${fluxExpected.toFixed(2)} L/s`);
+
+    testsEl.innerHTML = `Tests: <span class="${fail? 'fail':'pass'}">${pass}/${pass+fail} ${fail? 'with failures':''}</span><br>` + lines.join('<br>');
+  }
+
+  // Initial setup
+  highlightPreset(preset.value);
+  applyUI();
+  rebuildAndRender({ resetRunner: true });
+  runTests();
+  lastT = performance.now();
+  rafId = requestAnimationFrame(loop);
+})();
+</script>
+</body>
