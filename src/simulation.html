@@ -754,7 +754,8 @@
     const moving = running && !sim.finished;
     const ux = moving ? sim.u.x : sim.rain.Ux, uz = sim.u.z;
     const tau = reduceMotion ? 0.012 : 0.03;
-    const sx = -ux * tau * view.s, sz = uz * tau * view.s;
+    // tail trails the head: world offset -u·τ, i.e. upwind and up (screen z is flipped)
+    const sx = -ux * tau * view.s, sz = -uz * tau * view.s;
     ctx.lineCap = 'round';
     ctx.strokeStyle = behind ? 'rgba(85, 122, 144, 0.32)' : 'rgba(64, 96, 116, 0.62)';
     ctx.lineWidth = behind ? 1 : 1.4;
