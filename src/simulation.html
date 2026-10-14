@@ -1,611 +1,1018 @@
+<!doctype html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Directional Rain Exposure — Web Simulator</title>
+  <title>Soak: walk or run in the rain?</title>
+  <meta name="description" content="Walk a street in the rain and see how wet you get. Choose your pace, the wind and the rain; a drop-by-drop simulation checks the physics." />
+  <link rel="icon" href="../brand/soak-icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Young+Serif&display=swap" rel="stylesheet" />
   <style>
-    html, body { margin:0; padding:0; height:100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:#0b1220; color:#e6e9ef; overflow:hidden; }
-    .app { display:flex; gap:16px; padding:16px; flex-wrap:nowrap; justify-content:center; align-items:flex-start; height:100%; box-sizing:border-box; max-width:1280px; margin:0 auto; }
-    .panel { flex:0 0 360px; max-width:380px; background:#121a2b; border:1px solid #1f2a44; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.35); max-height:calc(100% - 16px); overflow-y:auto; }
-    .panel-header { display:flex; flex-direction:column; gap:4px; }
-    .preset-bar { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
-    .preset-btn { flex:1; min-width:120px; padding:6px 10px; border-radius:999px; background:#18243d; border:1px solid #223152; color:#d4def9; font-size:13px; cursor:pointer; }
-    .preset-btn.active { background:#2f4c80; border-color:#4c6fb3; color:#fff; box-shadow:0 0 0 1px rgba(140,176,255,0.35); }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px 12px; align-items:center; }
-    .grid label { color:#a8b3cf; font-size:12px; }
-    .grid input, .grid select { width:100%; padding:6px 8px; border-radius:8px; border:1px solid #2a3554; background:#0f1525; color:#e6e9ef; }
-    .btns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-    button { padding:8px 12px; border-radius:10px; border:1px solid #2a3554; background:#182036; color:#e6e9ef; cursor:pointer; }
-    button:hover { background:#202a46; }
-    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:12px; }
-    .stat-card { padding:10px 12px; background:#0c1427; border:1px solid #1f2340; border-radius:10px; display:flex; flex-direction:column; gap:4px; }
-    .stat-label { font-size:11px; letter-spacing:0.04em; text-transform:uppercase; color:#7f8fb2; }
-    .stat-value { font-size:16px; font-weight:600; color:#fff; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#1a2846; color:#b9c4e2; font-size:12px; border:1px solid #2a3554; }
-    .title { font-weight:700; font-size:18px; margin-bottom:8px; }
-    .sub { color:#9aa7c7; font-size:12px; margin-top:4px; }
-    .canvas-wrap { position:relative; flex:1 1 520px; height:calc(100% - 16px); min-height:420px; background:#0d1528; border:1px solid #1f2a44; border-radius:16px; overflow:hidden; }
-    canvas { display:block; width:100%; height:100%; background:linear-gradient(180deg,#0d1528,#0a1222); }
-    .hud { position:absolute; left:12px; top:12px; right:12px; display:flex; justify-content:space-between; pointer-events:none; }
-    .card { background:rgba(9,14,30,0.75); border:1px solid rgba(56,76,120,0.6); border-radius:12px; padding:10px 12px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-    .bar { height:10px; background:#121a2b; border:1px solid #223055; border-radius:999px; overflow:hidden; }
-    .bar > div { height:100%; background:linear-gradient(90deg,#3aa0ff,#7b9cff); width:0%; }
-    a.link { color:#8bb6ff; text-decoration:none; }
-    .tests { margin-top:10px; font-size:12px; color:#b5c1df; }
-    .pass { color:#7fe1a7; }
-    .fail { color:#ff9c9c; }
-    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
-    @media (max-width:900px){
-      html, body { overflow:auto; }
-      .app { flex-wrap:wrap; height:auto; }
-      .panel { flex:1 1 100%; max-width:none; max-height:none; }
-      .canvas-wrap { flex:1 1 100%; height:55vh; }
-      .preset-btn { min-width:100px; }
-      .grid { grid-template-columns: 1fr; }
+    :root {
+      --sky: #dde4e5;
+      --paper: #eef2f1;
+      --concrete: #bcc6c7;
+      --stone: #8d9a9e;
+      --asphalt: #3d4a4f;
+      --ink: #172529;
+      --ink-2: #4a5a5f;
+      --rain: #557a90;
+      --slicker: #f4c21b;
+      --slicker-deep: #9d7509;
+      --focus: #1b6fb8;
+
+      --s-top: #2a78d6;
+      --s-front: #eb6834;
+      --s-back: #1baf7a;
+      --s-side: #e87ba4;
+
+      --serif: "Young Serif", Georgia, "Times New Roman", serif;
+      --sans: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --gutter: clamp(16px, 4vw, 48px);
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--paper); color: var(--ink); }
+    body { margin: 0; font-family: var(--sans); font-size: 17px; line-height: 1.5; background: var(--paper); }
+    a { color: inherit; text-underline-offset: 3px; }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); }
+
+    /* header */
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 8px; }
+    .brand { display: inline-flex; color: var(--ink); }
+    .brand svg { height: 34px; width: auto; display: block; }
+    .top nav a { font-weight: 600; font-size: 15px; }
+
+    /* intro */
+    .intro { padding: 28px 0 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 26rem); gap: 24px 48px; align-items: end; }
+    h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 6.4vw, 84px); line-height: 0.98; letter-spacing: -0.02em; margin: 0; max-width: 11ch; }
+    .lede { margin: 0; color: var(--ink-2); font-size: 18px; max-width: 34ch; }
+
+    /* stage */
+    .stage { position: relative; border-radius: 22px; overflow: hidden; background: var(--sky); height: clamp(340px, 58vh, 620px); }
+    .stage canvas { display: block; width: 100%; height: 100%; }
+    .readout { position: absolute; left: clamp(16px, 3vw, 36px); right: clamp(16px, 3vw, 36px); bottom: clamp(18px, 2.4vw, 28px); color: var(--paper); pointer-events: none; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 18px; }
+    .readout .big { font-family: var(--serif); font-size: clamp(40px, 5.6vw, 72px); line-height: 1; font-variant-numeric: tabular-nums; }
+    .readout .unit { font-family: var(--serif); font-size: clamp(20px, 2.4vw, 30px); margin-left: 6px; }
+    .readout .sub { font-size: 15px; opacity: 0.86; }
+
+    /* transport */
+    .transport { display: flex; align-items: center; gap: 12px; padding: 18px 0 8px; flex-wrap: wrap; }
+    button, .seg label { font: inherit; }
+    .btn { appearance: none; border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 700; font-size: 16px; cursor: pointer; background: var(--ink); color: var(--paper);
+      transition: transform 140ms var(--ease-out), background-color 160ms ease; }
+    .btn:active { transform: scale(0.97); }
+    .btn.secondary { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+    .btn.play { background: var(--slicker); color: var(--ink); min-width: 170px; }
+    @media (hover: hover) and (pointer: fine) {
+      .btn:hover { background: #24363b; }
+      .btn.play:hover { background: #ffd23a; }
+      .btn.secondary:hover { background: rgba(23, 37, 41, 0.06); }
+    }
+    .route { flex: 1 1 260px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .route .line { position: relative; height: 4px; background: var(--concrete); border-radius: 2px; }
+    .route .done { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ink); border-radius: 2px; }
+    .route .dot { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--slicker); box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--ink); left: 0; }
+    .speed-pick { font-size: 14px; color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+    select, input[type=number] { font: inherit; font-size: 15px; color: var(--ink); background: #fff; border: 1.5px solid var(--stone); border-radius: 10px; padding: 6px 10px; }
+
+    /* controls */
+    .controls { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 20px 56px; padding: 36px 0 12px; border-bottom: 1.5px solid var(--concrete); }
+    .control h2 { font-family: var(--serif); font-weight: 400; font-size: 26px; margin: 0 0 4px; }
+    .control .value { font-size: 15px; color: var(--ink-2); margin: 0 0 14px; min-height: 1.5em; }
+    .control .value b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; cursor: pointer; margin: 0; }
+    input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--concrete); }
+    input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--concrete); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--slicker); border: 3px solid var(--ink); margin-top: -9px; transition: transform 140ms var(--ease-out); }
+    input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--slicker); border: 3px solid var(--ink); }
+    input[type=range]:active::-webkit-slider-thumb { transform: scale(1.12); }
+    .ticks { position: relative; height: 22px; font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+    .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+
+    .dial-row { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: center; }
+    .dial { width: 200px; height: 160px; touch-action: none; cursor: grab; }
+    .dial:active { cursor: grabbing; }
+    .dial-hint { font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+
+    .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+    .seg input { position: absolute; opacity: 0; pointer-events: none; }
+    .seg label { padding: 7px 13px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--stone); cursor: pointer; font-size: 15px; transition: background-color 160ms ease, color 160ms ease; }
+    .seg input:checked + label { background: var(--ink); color: var(--paper); box-shadow: none; }
+    .seg input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .seg-gap { height: 16px; }
+
+    /* answer */
+    .answer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 32px; align-items: end; padding: 40px 0; border-bottom: 1.5px solid var(--concrete); }
+    .answer p { font-family: var(--serif); font-size: clamp(24px, 3vw, 36px); line-height: 1.22; margin: 0; max-width: 30ch; }
+    .answer p .num { font-variant-numeric: tabular-nums; }
+
+    /* analysis */
+    .analysis { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 32px 56px; padding: 40px 0; }
+    h3 { font-family: var(--serif); font-weight: 400; font-size: 24px; margin: 0 0 6px; }
+    .caption { color: var(--ink-2); font-size: 15px; margin: 0 0 14px; max-width: 60ch; }
+    .chart-box { position: relative; height: 340px; }
+    .chart-box canvas { width: 100%; height: 100%; display: block; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--ink-2); margin-top: 8px; }
+    .legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: 4px; margin-right: 6px; }
+    .legend i.ring { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--ink); vertical-align: -1px; }
+    .legend i.dash { background: repeating-linear-gradient(90deg, var(--ink) 0 5px, transparent 5px 8px); }
+    .tooltip { position: absolute; pointer-events: none; background: #fff; border-radius: 10px; padding: 8px 11px; font-size: 14px; line-height: 1.45; box-shadow: 0 6px 24px rgba(23, 37, 41, 0.16); display: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .tooltip b { display: block; }
+    .tooltip i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 15px; }
+    th { text-align: right; font-weight: 600; color: var(--ink-2); font-size: 14px; padding: 0 0 8px; }
+    th:first-child, td:first-child { text-align: left; }
+    td { text-align: right; padding: 9px 0; border-top: 1.5px solid var(--concrete); }
+    td:first-child i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
+    tr.total td { font-weight: 700; }
+    .agree { font-size: 15px; color: var(--ink-2); margin-top: 12px; min-height: 1.5em; }
+    .ok { color: #13734f; font-weight: 700; } .bad { color: #b0331b; font-weight: 700; }
+
+    /* more */
+    details.more { border-top: 1.5px solid var(--concrete); padding: 20px 0 48px; }
+    details.more summary { font-family: var(--serif); font-size: 24px; cursor: pointer; list-style: none; }
+    details.more summary::-webkit-details-marker { display: none; }
+    details.more summary::after { content: "+"; margin-left: 12px; color: var(--ink-2); }
+    details.more[open] summary::after { content: "−"; }
+    .more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 56px; padding-top: 20px; }
+    .more-grid h4 { font-size: 16px; margin: 0 0 10px; }
+    .field { display: grid; grid-template-columns: 1fr 100px; gap: 10px; align-items: center; font-size: 15px; margin-bottom: 8px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; margin-bottom: 10px; }
+    .check input { margin-top: 4px; accent-color: var(--ink); }
+    .tests { font-size: 14px; color: var(--ink-2); line-height: 1.6; }
+    footer { padding: 24px 0 48px; color: var(--ink-2); font-size: 14px; }
+
+    @media (max-width: 960px) {
+      .intro, .controls, .analysis, .answer, .more-grid { grid-template-columns: 1fr; }
+      .controls { gap: 32px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .btn, input[type=range]::-webkit-slider-thumb { transition: none; }
     }
   </style>
 </head>
 <body>
-<div class="app">
-  <div class="panel">
-    <div class="panel-header">
-      <div class="title">Directional Rain Exposure</div>
-      <div class="sub">In‑browser particle sim with objective counters. Compare to your model.</div>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="#" aria-label="Soak">
+        <svg viewBox="10 20 380 165" role="img" aria-hidden="true"><g stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M62.13,101.55 A20.0,20.0 0 1 0 44.00,130.00 A20.0,20.0 0 1 1 25.87,158.45"/><circle cx="246.0" cy="130.0" r="40.0"/><path d="M286.0,90.0 L286.0,170.0"/><path d="M320.0,28 L320.0,170.0"/><path d="M372.0,90.0 L322.0,140.0"/><path d="M342.0,122 L376.0,170.0"/></g><path fill="var(--rain)" fill-rule="evenodd" d="M182.37,55.80 L185.94,127.51 A50.0,50.0 0 1 1 116.34,84.03 Z M166.00,130.00 A30.0,30.0 0 1 0 106.00,130.00 A30.0,30.0 0 1 0 166.00,130.00 Z"/></svg>
+      </a>
+      <nav><a href="../docs/Rain_model.pdf">Read the model</a></nav>
+    </header>
+
+    <section class="intro">
+      <h1>Walk or run in the rain?</h1>
+      <p class="lede">Pick a pace, a wind and a rain, then walk the street. Every drop is simulated, and the coat darkens where it lands.</p>
+    </section>
+
+    <section class="stage" aria-label="Street scene">
+      <canvas id="scene" aria-hidden="true"></canvas>
+      <div class="readout" aria-live="polite">
+        <span><span class="big" id="caught">0.0</span><span class="unit">mL caught</span></span>
+        <span class="sub" id="caughtSub"></span>
+      </div>
+    </section>
+
+    <div class="transport">
+      <button class="btn play" id="play">Start walking</button>
+      <button class="btn secondary" id="reset">Reset</button>
+      <div class="route" aria-label="Progress along the street">
+        <span id="routeFrom">0 m</span>
+        <div class="line"><div class="done" id="routeDone"></div><div class="dot" id="routeDot"></div></div>
+        <span id="routeTo">200 m</span>
+      </div>
+      <label class="speed-pick">Playback
+        <select id="playback">
+          <option value="1">real time</option>
+          <option value="3" selected>3× faster</option>
+          <option value="10">10× faster</option>
+          <option value="30">30× faster</option>
+        </select>
+      </label>
     </div>
 
-    <div class="preset-bar" role="group" aria-label="Preset scenarios">
-      <button type="button" class="preset-btn" data-preset="vertical">Vertical</button>
-      <button type="button" class="preset-btn" data-preset="headwind30">Headwind 30°</button>
-      <button type="button" class="preset-btn active" data-preset="tailwind45">Tailwind 45°</button>
-      <button type="button" class="preset-btn" data-preset="tailwind60">Tailwind 60°</button>
-    </div>
+    <section class="controls">
+      <div class="control">
+        <h2>Your pace</h2>
+        <p class="value" id="paceText"></p>
+        <input type="range" id="speed" min="0.4" max="8" step="0.1" value="1.4" aria-label="Your speed in metres per second" />
+        <div class="ticks" id="paceTicks"></div>
+        <div class="seg-gap"></div>
+        <div class="seg" role="radiogroup" aria-label="Distance">
+          <input type="radio" name="dist" id="d200" value="200" checked><label for="d200">200 m</label>
+          <input type="radio" name="dist" id="d1000" value="1000"><label for="d1000">1 km</label>
+          <input type="radio" name="dist" id="d2000" value="2000"><label for="d2000">2 km</label>
+        </div>
+      </div>
 
-    <div class="grid">
-      <label for="preset" class="sr-only">Preset</label>
-      <select id="preset" class="sr-only">
-        <option value="vertical">Vertical rain (θ=0°)</option>
-        <option value="headwind30">Headwind (θ=30°)</option>
-        <option value="tailwind45" selected>Tailwind (θ=45°)</option>
-        <option value="tailwind60">Strong tailwind (θ=60°)</option>
-      </select>
+      <div class="control">
+        <h2>Wind</h2>
+        <p class="value" id="windText"></p>
+        <div class="dial-row">
+          <svg class="dial" id="dial" viewBox="-34 -14 200 160" role="slider" tabindex="0" aria-label="Wind direction" aria-valuemin="0" aria-valuemax="345" aria-valuenow="0">
+            <circle cx="66" cy="66" r="54" fill="#fff" stroke="var(--concrete)" stroke-width="2"/>
+            <circle cx="66" cy="66" r="40" fill="none" stroke="var(--concrete)" stroke-width="1" stroke-dasharray="2 5"/>
+            <text x="66" y="2" text-anchor="middle" font-size="11" fill="var(--ink-2)">left</text>
+            <text x="66" y="139" text-anchor="middle" font-size="11" fill="var(--ink-2)">right</text>
+            <text x="126" y="70" font-size="11" fill="var(--ink-2)">ahead</text>
+            <text x="6" y="70" text-anchor="end" font-size="11" fill="var(--ink-2)">behind</text>
+            <g id="windArrow"><line x1="0" y1="0" x2="0" y2="0" stroke="var(--rain)" stroke-width="5" stroke-linecap="round"/><path d="" fill="var(--rain)"/></g>
+            <g id="walkerIcon"><circle cx="66" cy="66" r="9" fill="var(--slicker)" stroke="var(--ink)" stroke-width="2"/><path d="M73 61 L80 66 L73 71" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></g>
+          </svg>
+          <div>
+            <input type="range" id="windSpeed" min="0" max="10" step="0.5" value="0" aria-label="Wind speed in metres per second" />
+            <div class="ticks"><span style="left:0%;transform:none">calm</span><span style="left:50%">breezy</span><span style="left:100%;transform:translateX(-100%)">gale</span></div>
+            <p class="dial-hint">Drag the dial to set where the wind blows.</p>
+          </div>
+        </div>
+      </div>
 
-      <label for="vp">V<sub>P</sub> (m/s)</label>
-      <input id="vp" type="number" step="0.1" value="1.4" />
+      <div class="control">
+        <h2>Rain</h2>
+        <p class="value" id="rainText"></p>
+        <div class="seg" role="radiogroup" aria-label="Rain type">
+          <input type="radio" name="rain" id="r-drizzle" value="drizzle"><label for="r-drizzle">Drizzle</label>
+          <input type="radio" name="rain" id="r-light" value="light"><label for="r-light">Light</label>
+          <input type="radio" name="rain" id="r-moderate" value="moderate" checked><label for="r-moderate">Moderate</label>
+          <input type="radio" name="rain" id="r-heavy" value="heavy"><label for="r-heavy">Heavy</label>
+          <input type="radio" name="rain" id="r-downpour" value="downpour"><label for="r-downpour">Downpour</label>
+        </div>
+      </div>
+    </section>
 
-      <label for="vr">V<sub>R</sub> (m/s)</label>
-      <input id="vr" type="number" step="0.1" value="6" />
+    <section class="answer">
+      <p id="answer"></p>
+      <button class="btn secondary" id="useBest">Use the best pace</button>
+    </section>
 
-      <label for="theta">θ (deg)</label>
-      <input id="theta" type="number" step="1" value="45" />
+    <section class="analysis">
+      <div>
+        <h3>Water caught at every pace</h3>
+        <p class="caption">For the whole trip in the current wind and rain. Hover to read values; click to choose that pace.</p>
+        <div class="chart-box"><canvas id="chart" aria-label="Water caught against pace"></canvas><div class="tooltip" id="tip"></div></div>
+        <div class="legend">
+          <span><i style="background:var(--ink);height:4px"></i>Total</span>
+          <span><i style="background:var(--s-top)"></i>Hood and shoulders</span>
+          <span><i style="background:var(--s-front)"></i>Chest</span>
+          <span><i style="background:var(--s-back)"></i>Back</span>
+          <span><i style="background:var(--s-side)"></i>Side</span>
+          <span id="legendRefined" hidden><i class="dash"></i>Realistic body and airflow</span>
+          <span><i class="ring"></i>Simulated</span>
+        </div>
+      </div>
+      <div>
+        <h3>Where it lands</h3>
+        <p class="caption">The formula's prediction for the whole trip, next to the drops counted so far in this walk.</p>
+        <table>
+          <thead><tr><th>Part</th><th>Formula</th><th>Counted</th></tr></thead>
+          <tbody>
+            <tr><td><i style="background:var(--s-top)"></i>Hood and shoulders</td><td id="m-top"></td><td id="s-top"></td></tr>
+            <tr><td><i style="background:var(--s-front)"></i>Chest</td><td id="m-front"></td><td id="s-front"></td></tr>
+            <tr><td><i style="background:var(--s-back)"></i>Back</td><td id="m-back"></td><td id="s-back"></td></tr>
+            <tr><td><i style="background:var(--s-side)"></i>Side</td><td id="m-side"></td><td id="s-side"></td></tr>
+            <tr class="total"><td>Total (mL)</td><td id="m-total"></td><td id="s-total"></td></tr>
+          </tbody>
+        </table>
+        <p class="agree" id="agree"></p>
+      </div>
+    </section>
 
-      <label for="tailwind">Tailwind?</label>
-      <select id="tailwind">
-        <option value="1" selected>Yes</option>
-        <option value="-1">No (Headwind)</option>
-        <option value="0">Vertical</option>
-      </select>
+    <details class="more">
+      <summary>Fine-tune and check the physics</summary>
+      <div class="more-grid">
+        <div>
+          <h4>Body</h4>
+          <label class="field">Height (m)<input type="number" id="height" step="0.05" min="0.5" value="1.75"></label>
+          <label class="field">Shoulder width (m)<input type="number" id="breadth" step="0.05" min="0.1" value="0.45"></label>
+          <label class="field">Chest to back (m)<input type="number" id="thickness" step="0.05" min="0.05" value="0.25"></label>
+          <h4 style="margin-top:18px">Rain, exactly</h4>
+          <label class="field">Rain rate (mm/h)<input type="number" id="rainRate" step="0.5" min="0.1" value="5"></label>
+          <label class="field">Drop size (mm)<input type="number" id="dropDiam" step="0.1" min="0.3" max="6" value="1.5"></label>
+          <label class="field">Distance (m)<input type="number" id="distance" step="10" min="1" value="200"></label>
+        </div>
+        <div>
+          <h4>Beyond the box</h4>
+          <label class="check"><input type="checkbox" id="refined"><span>Show the realistic estimate on the chart: a human-shaped body that leans as it runs, with air deflecting small drops around it.</span></label>
+          <label class="check"><input type="checkbox" id="showBox"><span>Show the box the simulation counts hits on.</span></label>
+          <h4 style="margin-top:18px">Validate</h4>
+          <p class="caption">Simulate a dozen paces without animation and plot them against the formula.</p>
+          <button class="btn secondary" id="sweep">Simulate all paces</button>
+        </div>
+        <div>
+          <h4>Data</h4>
+          <button class="btn secondary" id="export">Download this walk as CSV</button>
+          <h4 style="margin-top:18px">Self-checks</h4>
+          <div class="tests" id="tests">Running…</div>
+        </div>
+      </div>
+    </details>
 
-      <label for="dL">ΔL (m)</label>
-      <input id="dL" type="number" step="10" value="200" />
-
-      <label for="conc">C (L/m³)</label>
-      <input id="conc" type="number" step="0.1" value="0.5" min="0.01" />
-
-      <label for="dropDiam">d<sub>drop</sub> (mm)</label>
-      <input id="dropDiam" type="number" step="0.1" value="2.0" min="0.5" max="6" />
-
-      <label for="depth">Slice depth (m)</label>
-      <input id="depth" type="number" step="0.1" value="0.5" min="0.1" />
-
-      <label for="simSpeed">Sim speed</label>
-      <select id="simSpeed">
-        <option value="1">1× real time</option>
-        <option value="2">2×</option>
-        <option value="5">5×</option>
-        <option value="10">10×</option>
-      </select>
-    </div>
-
-    <div class="btns">
-      <button id="apply">Apply</button>
-      <button id="start">Start</button>
-      <button id="pause">Pause</button>
-      <button id="reset">Reset</button>
-      <button id="export">Export CSV</button>
-    </div>
-
-    <div class="stat-grid">
-      <div class="stat-card"><span class="stat-label">Distance</span><span class="stat-value"><span id="dist">0.0</span> m</span></div>
-      <div class="stat-card"><span class="stat-label">Time</span><span class="stat-value"><span id="time">0.0</span> s</span></div>
-      <div class="stat-card"><span class="stat-label">Top</span><span class="stat-value" id="Ltop">0.0 L</span></div>
-      <div class="stat-card"><span class="stat-label">Front</span><span class="stat-value" id="Lfront">0.0 L</span></div>
-      <div class="stat-card"><span class="stat-label">Back</span><span class="stat-value" id="Lback">0.0 L</span></div>
-      <div class="stat-card"><span class="stat-label">Total</span><span class="stat-value" id="Ltot">0.0 L</span></div>
-      <div class="stat-card"><span class="stat-label">Sim speed</span><span class="stat-value" id="speedLabel">1×</span></div>
-      <div class="stat-card"><span class="stat-label">Drops / m³</span><span class="stat-value" id="dropsPerM3">0</span></div>
-      <div class="stat-card"><span class="stat-label">Flux</span><span class="stat-value" id="fluxLps">0 L/s</span></div>
-      <div class="stat-card"><span class="stat-label">Sampled</span><span class="stat-value" id="sampleRatio">0%</span></div>
-    </div>
-
-    <div style="height:8px"></div>
-    <div class="pill">Model vs Simulation</div>
-    <div class="stat-grid">
-      <div class="stat-card"><span class="stat-label">K<sub>TOT</sub> model</span><span class="stat-value" id="Kmodel">0.0</span></div>
-      <div class="stat-card"><span class="stat-label">Error</span><span class="stat-value" id="Kerr">0.0 L (0%)</span></div>
-    </div>
-
-    <div style="height:8px"></div>
-    <div class="pill">Progress</div>
-    <div class="bar"><div id="bar"></div></div>
-
-    <div class="tests" id="tests">Tests: running…</div>
-
-    <div class="sub" style="margin-top:10px">Notes: Particles use full rain vector; deposition counts by face (top/front/back). For publication‑grade CFD, use Eulerian (RANS) + DPM.</div>
+    <footer>Soak models rain as a uniform field of drops falling at their terminal speed and carried by the wind. The full derivation, its validation and its limits are in the <a href="../docs/Rain_model.pdf">model write-up</a>.</footer>
   </div>
 
-  <div class="canvas-wrap">
-    <div class="hud">
-      <div class="card"><b>V<sub>P</sub></b> <span id="hudVP">1.4</span> m/s &nbsp; | &nbsp; <b>V<sub>R</sub></b> <span id="hudVR">6</span> m/s @ <span id="hudTH">45</span>°</div>
-      <div class="card"><b>θ</b>: <span id="hudTheta">45</span>° &nbsp; <b>Tailwind:</b> <span id="hudTw">yes</span></div>
-    </div>
-    <canvas id="cv"></canvas>
-  </div>
-</div>
-
+<script src="rain-model.js"></script>
+<script src="body.js"></script>
+<script src="aero-table.js"></script>
+<script src="refined.js"></script>
 <script>
 (() => {
-  const cv = document.getElementById('cv');
-  const ctx = cv.getContext('2d');
-  const DPR = Math.min(2, window.devicePixelRatio || 1);
-  function resize() {
-    const r = cv.getBoundingClientRect();
-    cv.width = r.width * DPR; cv.height = r.height * DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
-  }
-  window.addEventListener('resize', resize); resize();
-
-  // DOM helpers
-  const qs = (id) => document.getElementById(id);
-  const preset = qs('preset');
-  const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
-  const speedSel = qs('simSpeed');
-  let timeScale = +speedSel.value;
-  const inp = {
-    vp: qs('vp'),
-    vr: qs('vr'),
-    theta: qs('theta'),
-    tailwind: qs('tailwind'),
-    dL: qs('dL'),
-    conc: qs('conc'),
-    dropDiam: qs('dropDiam'),
-    depth: qs('depth'),
+  'use strict';
+  const M = window.RainModel, BODY = window.RainBody, REF = window.RainRefined;
+  const $ = (id) => document.getElementById(id);
+  const FACES = M.FACES;
+  const V_MAX = 8;
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const C = {
+    sky: css('--sky'), paper: css('--paper'), concrete: css('--concrete'), stone: css('--stone'), asphalt: css('--asphalt'),
+    ink: css('--ink'), ink2: css('--ink-2'), rain: css('--rain'), slicker: css('--slicker'), slickerDeep: css('--slicker-deep'),
+    top: css('--s-top'), front: css('--s-front'), back: css('--s-back'), side: css('--s-side'),
   };
-  const hud = { VP: qs('hudVP'), VR: qs('hudVR'), TH: qs('hudTH'), theta: qs('hudTheta'), tw: qs('hudTw') };
-  const out = { dist: qs('dist'), time: qs('time'), Ltop: qs('Ltop'), Lfront: qs('Lfront'), Lback: qs('Lback'), Ltot: qs('Ltot'), Kmodel: qs('Kmodel'), Kerr: qs('Kerr'), bar: qs('bar'), speed: qs('speedLabel'), dropsPerM3: qs('dropsPerM3'), flux: qs('fluxLps'), sampleRatio: qs('sampleRatio') };
-  const testsEl = qs('tests');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // World units
-  const W = () => cv.width / DPR; const H = () => cv.height / DPR;
-
-  // Physical avatar dimensions (meters) and visual state
-  const PERSON_HEIGHT_M = 1.8;
-  const PERSON_WIDTH_M = 0.5;
-  const SKY_BUFFER_M = 0.4;
-  const GROUND_BUFFER_M = 0.1;
-  const HIT_TOL_PX = 6;
-  const MAX_RENDER_PARTICLES = 24000;
-  const MIN_RENDER_PARTICLES = 800;
-  const MIN_SPAWN_RATE = 2;
-  const person = { x: 0, w: 0, h: 0 };
-
-
-  // Simulation state
-  let sim = null; let running = false; let rafId = 0; let lastT = 0; let acc = 0; // fixed-step accumulator
-
-  function Hfun(x){ return x>0 ? 1:0; }
-  function formatLarge(n){
-    if(!isFinite(n)) return '0';
-    if(Math.abs(n) >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M';
-    if(Math.abs(n) >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'') + 'k';
-    return n.toFixed(0);
+  const RAIN = {
+    drizzle:  { rate: 0.5, drop: 0.3, name: 'Drizzle', desc: 'fine drops drifting down at about' },
+    light:    { rate: 2.5, drop: 1.0, name: 'Light rain', desc: 'small drops falling at' },
+    moderate: { rate: 5,   drop: 1.5, name: 'Moderate rain', desc: 'drops falling at' },
+    heavy:    { rate: 15,  drop: 2.2, name: 'Heavy rain', desc: 'big drops falling at' },
+    downpour: { rate: 40,  drop: 3.0, name: 'Downpour', desc: 'large drops falling at' },
+  };
+  const PACES = [[1.4, 'walk'], [2.6, 'jog'], [3.8, 'run'], [6.5, 'sprint']];
+  function paceWord(v) {
+    if (v < 1.0) return 'stroll';
+    let w = PACES[0][1];
+    for (const [s, n] of PACES) if (v >= s - 0.5) w = n;
+    return w;
   }
 
-  function areaProps(depthM){
-    const top = PERSON_WIDTH_M * depthM;
-    const front = PERSON_HEIGHT_M * depthM;
-    const back = front;
-    const atot = top + front + back;
-    return { top, front, back, atot };
+  // ------------------------------------------------------------------ parameters
+  const state = { windDir: 0 };
+  function params() {
+    const num = (id, d) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : d; };
+    return {
+      speed: Math.min(10, Math.max(0.2, num('speed', 1.4))),
+      distance: Math.max(1, num('distance', 200)),
+      rainRateMmH: Math.max(0.1, num('rainRate', 5)),
+      dropDiamMm: Math.min(6, Math.max(0.3, num('dropDiam', 1.5))),
+      windSpeed: Math.max(0, num('windSpeed', 0)),
+      windDirDeg: state.windDir,
+      height: Math.max(0.5, num('height', 1.75)),
+      breadth: Math.max(0.1, num('breadth', 0.45)),
+      thickness: Math.max(0.05, num('thickness', 0.25)),
+    };
   }
-  function modelKTOT(VP, VR, thDeg, tail){
-    const th = thDeg * Math.PI/180;
-    const VRx = (tail===0?0:tail) * VR * Math.sin(th);
-    const depthM = Math.max(0.1, +inp.depth.value || 1);
-    const areas = areaProps(depthM);
-    const alpha = areas.top / areas.atot;
-    const beta = areas.front / areas.atot;
-    const delta = areas.back / areas.atot;
-    const top = alpha * VR * Math.cos(th);
-    const col = Math.abs(VP) * beta * (1 - Hfun(-VRx - 0.01));
-    const mot = Math.abs(VP + VRx) * ( Hfun(VP*VRx) * delta + Hfun(-VP*VRx) * beta );
-    const factor = top + col + mot;
-    const travelTime = (+inp.dL.value) / Math.max(Math.abs(VP), 1e-3);
-    const KT = (+inp.conc.value) * travelTime * areas.atot * factor;
-    return { KT, top, col, mot, factor, VRx, VRz: VR*Math.cos(th) };
-  }
+  let P = params();
 
-  function highlightPreset(name){
-    presetButtons.forEach(btn=>{
-      btn.classList.toggle('active', btn.dataset.preset === name);
+  // ------------------------------------------------------------------ simulation state
+  let sim = null, running = false, playback = 3;
+  let sweepPoints = [], sweepToken = 0;
+  const splashes = [], ripples = [];
+  let worldX = 0;        // metres walked, for the scrolling street
+  let gaitPhase = 0;
+  const timeline = [];
+  let view = { w: 0, h: 0, s: 100, ox: 0, oy: 0 };
+
+  function newSim() {
+    const halfView = Math.max(3.2, (view.w * 0.62) / Math.max(view.s, 1)); // cover the visible street
+    const width = 2 * halfView;
+    sim = new M.Simulation(P, {
+      targetParcels: Math.round(Math.min(5000, Math.max(1800, 420 * width))),
+      seed: (Math.random() * 2 ** 31) | 0,
+      marginX: halfView - P.thickness / 2, marginY: 0.6, marginZ: Math.max(0.8, view.h / view.s - P.height + 0.2),
     });
-    preset.value = name;
   }
 
-  function setPreset(name){
-    if(name==='vertical'){ inp.theta.value = 0; inp.vr.value = 6; inp.tailwind.value = 0; }
-    if(name==='headwind30'){ inp.theta.value = 30; inp.vr.value = 4; inp.tailwind.value = -1; }
-    if(name==='tailwind45'){ inp.theta.value = 45; inp.vr.value = 6; inp.tailwind.value = 1; }
-    if(name==='tailwind60'){ inp.theta.value = 60; inp.vr.value = 6; inp.tailwind.value = 1; }
-    highlightPreset(name);
-    applyUI();
+  function rebuild({ keepSweep = false } = {}) {
+    P = params();
+    running = false;
+    newSim();
+    splashes.length = 0; ripples.length = 0; timeline.length = 0;
+    if (!keepSweep) { sweepPoints = []; sweepToken++; $('sweep').disabled = false; $('sweep').textContent = 'Simulate all paces'; }
+    refinedCurve = null;
+    updatePlayButton();
+    updateTexts();
+    updateSimTexts();
+    drawChart();
   }
 
-  function applyUI(){
-    const VP = +inp.vp.value, VR = +inp.vr.value, th = +inp.theta.value, tail = +inp.tailwind.value;
-    hud.VP.textContent = VP.toFixed(1); hud.VR.textContent = VR.toFixed(1); hud.TH.textContent = th.toFixed(0); hud.theta.textContent = th.toFixed(0); hud.tw.textContent = tail==1?'yes':(tail==-1?'no':'vertical');
-    // Update model prediction
-    const m = modelKTOT(VP, VR, th, tail);
-    out.Kmodel.textContent = `${m.KT.toFixed(1)} L`;
+  // ------------------------------------------------------------------ text
+  const fmt = (litres, d = 1) => (litres * 1000).toFixed(d);
+  function windDescription(p) {
+    if (p.windSpeed === 0) return 'Still air.';
+    const r = M.rainState(p);
+    const along = r.Ux, across = Math.abs(r.Uy);
+    let kind;
+    if (Math.abs(along) < 0.25 * p.windSpeed) kind = 'crosswind';
+    else if (along > 0) kind = across > 0.4 * p.windSpeed ? 'tailwind, partly across' : 'tailwind';
+    else kind = across > 0.4 * p.windSpeed ? 'headwind, partly across' : 'headwind';
+    return `<b>${p.windSpeed.toFixed(1)} m/s</b> ${kind}. Rain falls at ${r.thetaDeg.toFixed(0)}° from vertical.`;
   }
 
-  preset.addEventListener('change', e=>{
-    setPreset(e.target.value);
-    rebuildAndRender({ resetRunner: true });
-  });
-  presetButtons.forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const name = btn.dataset.preset;
-      setPreset(name);
-      rebuildAndRender({ resetRunner: true });
-    });
-  });
-  speedSel.addEventListener('change', ()=>{
-    timeScale = Math.max(0.5, +speedSel.value || 1);
-    if(sim){
-      sim.timeScale = timeScale;
-      updateUI();
-    }
-  });
-  qs('apply').addEventListener('click', ()=>{
-    applyUI();
-    rebuildAndRender({ resetRunner: true });
-  });
+  function updateTexts() {
+    const p = P, K = M.exposure(p), rain = M.rainState(p);
+    $('paceText').innerHTML = `<b>${p.speed.toFixed(1)} m/s</b>, a ${paceWord(p.speed)}. ${p.distance} m takes ${formatTime(p.distance / p.speed)}.`;
+    $('windText').innerHTML = windDescription(p);
+    const preset = Object.values(RAIN).find(r => r.rate === p.rainRateMmH && r.drop === p.dropDiamMm);
+    $('rainText').innerHTML = preset
+      ? `<b>${p.rainRateMmH} mm/h</b>, ${preset.desc} ${rain.vt.toFixed(1)} m/s.`
+      : `<b>${p.rainRateMmH} mm/h</b>, ${p.dropDiamMm} mm drops falling at ${rain.vt.toFixed(1)} m/s.`;
+    for (const f of [...FACES, 'total']) $('m-' + f).textContent = fmt(K[f]);
+    $('routeTo').textContent = p.distance >= 1000 ? (p.distance / 1000) + ' km' : p.distance + ' m';
 
-  // Telemetry logger
-  const logs = [];
-  function logRow(t){
-    logs.push([t.toFixed(2), sim.dist.toFixed(2), sim.VP.toFixed(2), sim.VR.toFixed(2), sim.theta.toFixed(1), sim.tail, sim.Ltop.toFixed(6), sim.Lfront.toFixed(6), sim.Lback.toFixed(6), sim.Ltot.toFixed(6)]);
+    const opt = M.optimalSpeed(p, V_MAX);
+    const Kopt = M.exposure(Object.assign({}, p, { speed: opt.speed })).total;
+    const save = 1 - Kopt / K.total;
+    let s = `At ${p.speed.toFixed(1)} m/s you’ll catch about <span class="num">${fmt(K.total, 0)} mL</span>. `;
+    if (save < 0.02) s += 'That is already about as dry as this weather allows.';
+    else if (opt.regime === 'match-wind') s += `Keep pace with the wind instead, at ${opt.speed.toFixed(1)} m/s, and it drops to <span class="num">${fmt(Kopt, 0)} mL</span>.`;
+    else s += `Going as fast as you can (${V_MAX} m/s) brings it down to <span class="num">${fmt(Kopt, 0)} mL</span>.`;
+    $('answer').innerHTML = s;
+    $('useBest').hidden = save < 0.02;
+    $('useBest').textContent = opt.regime === 'match-wind' ? 'Match the wind' : 'Go flat out';
+    $('legendRefined').hidden = !$('refined').checked;
   }
-  qs('export').addEventListener('click', ()=>{
-    const header = 'time_s,dist_m,VP,VR,theta_deg,tailSign,L_top_L,L_front_L,L_back_L,L_total_L\n';
-    const body = logs.map(r=>r.join(',' )).join('\n');
-    const blob = new Blob([header + body], {type:'text/csv'});
+
+  function formatTime(t) {
+    if (t < 90) return `${t.toFixed(0)} s`;
+    const m = Math.floor(t / 60), s = Math.round(t % 60);
+    return `${m} min ${s.toString().padStart(2, '0')} s`;
+  }
+
+  function updateSimTexts() {
+    if (!sim) return;
+    const c = sim.collected();
+    $('caught').textContent = fmt(c.total);
+    const K = M.exposure(P).total;
+    $('caughtSub').textContent = sim.finished
+      ? `Arrived. The formula predicted ${fmt(K)} mL.`
+      : running ? `${sim.distance.toFixed(0)} of ${P.distance} m walked. The formula predicts ${fmt(K)} mL in total.`
+      : sim.distance > 0 ? 'Paused.' : `The formula predicts ${fmt(K)} mL for this walk.`;
+    for (const f of [...FACES, 'total']) $('s-' + f).textContent = c.hits ? `${fmt(c[f])} ± ${fmt(c[f + 'Sigma'])}` : '–';
+    const prog = sim.distance / P.distance;
+    $('routeDone').style.width = (prog * 100) + '%';
+    $('routeDot').style.left = (prog * 100) + '%';
+    if (sim.finished) {
+      const z = (c.total - K) / Math.max(c.totalSigma, 1e-12);
+      $('agree').innerHTML = `Counted ${fmt(c.total)} mL against ${fmt(K)} mL predicted, ${Math.abs(z) < 3 ? '<span class="ok">within' : '<span class="bad">outside'} the counting noise</span> (${z.toFixed(1)}σ).`;
+    } else $('agree').textContent = '';
+  }
+
+  function updatePlayButton() {
+    const b = $('play');
+    if (sim && sim.finished) b.textContent = 'Walk again';
+    else if (running) b.textContent = 'Pause';
+    else b.textContent = sim && sim.distance > 0 ? 'Keep walking' : 'Start walking';
+  }
+
+  // ------------------------------------------------------------------ inputs
+  function buildTicks() {
+    const el = $('paceTicks'), min = 0.4, max = 8;
+    el.innerHTML = PACES.map(([v, n]) => `<span style="left:${((v - min) / (max - min) * 100).toFixed(1)}%">${n}</span>`).join('');
+  }
+  $('speed').addEventListener('input', () => rebuild({ keepSweep: true }));
+  $('windSpeed').addEventListener('input', () => rebuild());
+  for (const id of ['height', 'breadth', 'thickness', 'rainRate', 'dropDiam', 'distance']) $(id).addEventListener('change', () => { syncRadios(); rebuild(); });
+  document.querySelectorAll('input[name=dist]').forEach(r => r.addEventListener('change', () => { $('distance').value = r.value; rebuild({ keepSweep: true }); }));
+  document.querySelectorAll('input[name=rain]').forEach(r => r.addEventListener('change', () => {
+    const pr = RAIN[r.value]; $('rainRate').value = pr.rate; $('dropDiam').value = pr.drop; rebuild();
+  }));
+  function syncRadios() {
+    const d = $('distance').value;
+    document.querySelectorAll('input[name=dist]').forEach(r => { r.checked = r.value === d; });
+    const rr = +$('rainRate').value, dd = +$('dropDiam').value;
+    document.querySelectorAll('input[name=rain]').forEach(r => { r.checked = RAIN[r.value].rate === rr && RAIN[r.value].drop === dd; });
+  }
+  $('playback').addEventListener('change', e => { playback = +e.target.value; });
+  $('play').addEventListener('click', () => {
+    if (sim.finished) { worldX = 0; rebuild({ keepSweep: true }); }
+    running = !running;
+    updatePlayButton(); updateSimTexts();
+  });
+  $('reset').addEventListener('click', () => { worldX = 0; rebuild({ keepSweep: true }); });
+  $('useBest').addEventListener('click', () => {
+    const opt = M.optimalSpeed(P, V_MAX);
+    $('speed').value = opt.speed.toFixed(1);
+    rebuild({ keepSweep: true });
+  });
+  $('refined').addEventListener('change', () => { refinedCurve = null; updateTexts(); drawChart(); });
+  $('showBox').addEventListener('change', () => {});
+  $('export').addEventListener('click', () => {
+    const header = 'time_s,distance_m,speed_mps,wind_mps,wind_dir_deg,rain_mmh,drop_mm,top_mL,front_mL,back_mL,side_mL,total_mL,total_sigma_mL\n';
+    const blob = new Blob([header + timeline.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'rain_exposure_sim.csv'; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = 'soak-walk.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
 
-  function resetSim({ resetRunner = true } = {}){
-    const pathLengthM = Math.max(1, +inp.dL.value);
-    const sliceDepthM = Math.max(0.1, +inp.depth.value || 0.5);
-    const VP = +inp.vp.value, VR = +inp.vr.value, th = +inp.theta.value, tail = +inp.tailwind.value;
-    const thR = th*Math.PI/180;
-    const VRx = (tail===0?0:tail) * VR * Math.sin(thR);
-    const VRz = Math.max(0.1, VR * Math.cos(thR));
-    const concVal = Math.max(0.01, +inp.conc.value);
-    const dropDiamMm = Math.max(0.5, +inp.dropDiam.value || 2);
-    const dropDiamM = dropDiamMm / 1000;
-    const dropVolumeL = (4/3) * Math.PI * Math.pow(dropDiamM/2, 3) * 1000;
+  // wind dial
+  const dial = $('dial');
+  function drawDial() {
+    const a = state.windDir * Math.PI / 180;
+    // screen: walking direction is to the right (+x), wind toward +y (left of walker) is up
+    const dx = Math.cos(a), dy = -Math.sin(a);
+    const r0 = 22, r1 = 40, cx = 66, cy = 66;
+    const x0 = cx - dx * r1, y0 = cy - dy * r1, x1 = cx + dx * (r1 - 6), y1 = cy + dy * (r1 - 6);
+    const g = $('windArrow'), line = g.querySelector('line'), head = g.querySelector('path');
+    const visible = +$('windSpeed').value > 0;
+    g.style.opacity = visible ? 1 : 0.25;
+    // the arrow runs across the dial, past the walker, in the direction the wind blows
+    line.setAttribute('x1', x0.toFixed(1)); line.setAttribute('y1', y0.toFixed(1));
+    line.setAttribute('x2', (cx + dx * (r1 - 10)).toFixed(1)); line.setAttribute('y2', (cy + dy * (r1 - 10)).toFixed(1));
+    const px = -dy, py = dx, hx = cx + dx * (r1 + 4), hy = cy + dy * (r1 + 4), bx = cx + dx * (r1 - 12), by = cy + dy * (r1 - 12);
+    head.setAttribute('d', `M${hx.toFixed(1)},${hy.toFixed(1)} L${(bx + px * 8).toFixed(1)},${(by + py * 8).toFixed(1)} L${(bx - px * 8).toFixed(1)},${(by - py * 8).toFixed(1)} Z`);
+    dial.setAttribute('aria-valuenow', state.windDir);
+    dial.setAttribute('aria-valuetext', windDescription(P).replace(/<[^>]+>/g, ''));
+    void r0; void x1; void y1;
+  }
+  function dialFromPointer(e) {
+    const r = dial.getBoundingClientRect();
+    const x = e.clientX - (r.left + r.width / 2), y = e.clientY - (r.top + r.height / 2);
+    let deg = Math.atan2(-y, x) * 180 / Math.PI;
+    deg = (Math.round(deg / 15) * 15 + 360) % 360;
+    if (deg !== state.windDir) {
+      state.windDir = deg;
+      if (+$('windSpeed').value === 0) $('windSpeed').value = 3;
+      rebuild(); drawDial();
+    }
+  }
+  let dragging = false;
+  dial.addEventListener('pointerdown', e => { dragging = true; dial.setPointerCapture(e.pointerId); dialFromPointer(e); });
+  dial.addEventListener('pointermove', e => { if (dragging) dialFromPointer(e); });
+  dial.addEventListener('pointerup', () => { dragging = false; });
+  dial.addEventListener('keydown', e => {
+    const step = { ArrowRight: -15, ArrowDown: -15, ArrowLeft: 15, ArrowUp: 15 }[e.key];
+    if (step == null) return;
+    e.preventDefault();
+    state.windDir = (state.windDir + step + 360) % 360;
+    rebuild(); drawDial();
+  });
+  $('windSpeed').addEventListener('input', drawDial);
 
-    const padX = 40, padZ = 30;
-    const usableWidthPx = Math.max(200, W() - padX*2);
-    const worldHeightM = PERSON_HEIGHT_M + SKY_BUFFER_M + GROUND_BUFFER_M;
-    const usableHeightPx = Math.max(200, H() - padZ*2);
-    const pxPerMX = usableWidthPx / pathLengthM;
-    const pxPerMY = Math.min(pxPerMX, usableHeightPx / worldHeightM);
-    const worldHeightPx = worldHeightM * pxPerMY;
-    const x0 = padX;
-    const x1 = x0 + pathLengthM * pxPerMX;
-    const groundZ = H() - padZ;
-    const ceilingZ = Math.max(padZ, groundZ - worldHeightPx);
-    const spawnZ = ceilingZ;
-    const fallDist = groundZ - spawnZ;
-    const vxPix = VRx * pxPerMX;
-    const vzPix = VRz * pxPerMY;
-    const tFall = fallDist / Math.max(0.1, vzPix);
-    const driftX = vxPix * tFall;
-    const marginM = Math.min(2, 0.1 * pathLengthM);
-    const marginPx = marginM * pxPerM;
-    const emitMinX = x0 - marginPx - Math.max(0, driftX);
-    const emitMaxX = x1 + marginPx + Math.max(0, -driftX);
+  // ------------------------------------------------------------------ scene
+  const cv = $('scene'), ctx = cv.getContext('2d');
+  const ch = $('chart'), cctx = ch.getContext('2d');
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  let chartSize = { w: 0, h: 0 };
+  function fit(canvas, c) {
+    const r = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.round(r.width * DPR)); canvas.height = Math.max(1, Math.round(r.height * DPR));
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    return { w: r.width, h: r.height };
+  }
+  function layout() {
+    const sz = fit(cv, ctx);
+    const groundPx = sz.h * 0.70;                     // pavement line
+    const s = Math.min(sz.h * 0.54 / 1.9, sz.w / 7);  // px per metre: walker ≈ 60% of the scene height
+    view = { w: sz.w, h: sz.h, s, ox: sz.w * 0.42, oy: groundPx };
+    chartSize = fit(ch, cctx);
+  }
+  const X = (x) => view.ox + x * view.s;
+  const Z = (z) => view.oy - z * view.s;
 
-    const curtainAreaM2 = pathLengthM * sliceDepthM;
-    const dropsPerM3 = concVal / Math.max(dropVolumeL, 1e-9);
-    const fluxLps = concVal * VRz * curtainAreaM2;
-    const dropsPerSecPhysical = Math.max(1e-6, fluxLps / Math.max(dropVolumeL, 1e-9));
-    const desiredParticles = dropsPerSecPhysical * tFall;
-    const cappedParticles = Math.min(MAX_RENDER_PARTICLES, Math.max(MIN_RENDER_PARTICLES, desiredParticles));
-    const spawnPerSec = Math.max(MIN_SPAWN_RATE, Math.min(dropsPerSecPhysical, cappedParticles / Math.max(tFall, 0.05)));
-    const sampleRatio = Math.min(1, spawnPerSec / Math.max(dropsPerSecPhysical, 1e-6));
-    const weightL = fluxLps / Math.max(spawnPerSec, 1e-6);
+  // deterministic pseudo-random for street furniture
+  const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
-    if(resetRunner){
-      person.w = PERSON_WIDTH_M * pxPerMX;
-      person.h = PERSON_HEIGHT_M * pxPerMY;
-      person.x = x0 + 0.05 * person.w;
+  function drawStreet() {
+    const { w, h, s } = view;
+    ctx.fillStyle = C.sky; ctx.fillRect(0, 0, w, h);
+
+    // far buildings (parallax 0.18)
+    const far = worldX * 0.18 * s;
+    const bw = 90;
+    const first = Math.floor(far / bw) - 1;
+    for (let i = first; i < first + Math.ceil(w / bw) + 3; i++) {
+      const hgt = h * (0.28 + 0.34 * hash(i));
+      const wid = bw * (0.7 + 0.5 * hash(i + 99));
+      const x = i * bw - far;
+      ctx.fillStyle = hash(i + 7) > 0.5 ? '#c9d2d3' : '#c2cbcd';
+      ctx.fillRect(x, view.oy - hgt, wid, hgt);
+      ctx.fillStyle = 'rgba(141, 154, 158, 0.16)';
+      for (let fy = view.oy - hgt + 14; fy < view.oy - 30; fy += 22) for (let fx = x + 10; fx < x + wid - 14; fx += 18) {
+        if (hash(fx * 0.37 + fy * 0.11 + i) > 0.45) ctx.fillRect(fx, fy, 7, 10);
+      }
     }
 
-    sim = {
-      VP, VR, theta: th, tail,
-      VRx, VRz,
-      pxPerMX,
-      mx: pxPerMX,
-      vxPix, vzPix,
-      x0, x1,
-      z0: ceilingZ, z1: groundZ,
-      spawnZ, groundZ,
-      emitMinX, emitMaxX,
-      pathLength: pathLengthM,
-      dist:0, time:0,
-      Ltop:0, Lfront:0, Lback:0, Ltot:0,
-      particles:[],
-      spawnPerSec,
-      targetLps: fluxLps,
-      weightL,
-      tFall,
-      timeScale,
-      spawnDebt: 0,
-      stats: {
-        dropDiamMm,
-        dropVolumeL,
-        dropsPerM3,
-        fluxLps,
-        depthM: sliceDepthM,
-        sampleRatio
-      }
+    // lamp posts every 14 m at the walker's depth (parallax 1)
+    const xmin = -view.ox / s, xmax = (w - view.ox) / s;
+    for (let k = Math.floor((worldX + xmin) / 14); k <= Math.ceil((worldX + xmax) / 14); k++) {
+      const x = X(k * 14 + 6 - worldX);
+      ctx.fillStyle = '#6f7d82';
+      ctx.fillRect(x - 3, Z(4.2), 6, Z(0) - Z(4.2));
+      ctx.fillRect(x - 3, Z(4.2), 0.55 * s, 5);
+    }
+
+    // pavement
+    ctx.fillStyle = C.concrete; ctx.fillRect(0, view.oy, w, h * 0.07);
+    ctx.strokeStyle = 'rgba(61, 74, 79, 0.18)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let k = Math.floor((worldX + xmin) / 0.9); k <= Math.ceil((worldX + xmax) / 0.9); k++) {
+      const x = X(k * 0.9 - worldX);
+      ctx.moveTo(x, view.oy); ctx.lineTo(x - 0.25 * s, view.oy + h * 0.07);
+    }
+    ctx.stroke();
+    // puddles
+    for (let k = Math.floor((worldX + xmin) / 9); k <= Math.ceil((worldX + xmax) / 9); k++) {
+      if (hash(k + 3) < 0.45) continue;
+      const x = X(k * 9 + 4 * hash(k) - worldX);
+      ctx.fillStyle = 'rgba(85, 122, 144, 0.22)';
+      ctx.beginPath(); ctx.ellipse(x, view.oy + h * 0.035, (0.5 + 0.6 * hash(k + 5)) * s, h * 0.014, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // kerb and road
+    ctx.fillStyle = '#a2adb0'; ctx.fillRect(0, view.oy + h * 0.07, w, 5);
+    ctx.fillStyle = C.asphalt; ctx.fillRect(0, view.oy + h * 0.07 + 5, w, h);
+    ctx.strokeStyle = 'rgba(238, 242, 241, 0.55)'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let k = Math.floor((worldX + xmin) / 3); k <= Math.ceil((worldX + xmax) / 3); k++) {
+      const x = X(k * 3 - worldX);
+      ctx.moveTo(x, h - 10); ctx.lineTo(x + 1.4 * s, h - 10);
+    }
+    ctx.stroke();
+  }
+
+  // ------------------------------------------------------------------ walker
+  // Gait: stride length grows with speed; walking blends into running between 1.9 and 3.1 m/s.
+  function gait(v, phase, moving) {
+    const k = Math.min(1, Math.max(0, (v - 1.9) / 1.2));
+    const amp = moving ? 1 : 0;
+    const post = BODY.postureForSpeed(v);
+    const lean = (moving ? post.leanDeg : 0) * Math.PI / 180;
+    const legs = [0, Math.PI].map(off => {
+      const ph = phase + off;
+      const thigh = amp * (18 + 14 * k) * Math.sin(ph);
+      const knee = 4 + amp * ((28 + 60 * k) * Math.pow(Math.max(0, Math.cos(ph + Math.PI / 6)), 2) + 8 * k);
+      return { thigh: thigh * Math.PI / 180, shank: (thigh - knee) * Math.PI / 180 };
+    });
+    const arms = [0, Math.PI].map(off => {
+      const ph = phase + off + Math.PI;
+      return { upper: amp * (14 + 22 * k) * Math.sin(ph) * Math.PI / 180, elbow: (12 + (moving ? 78 : 0) * k) * Math.PI / 180 };
+    });
+    const LT = 0.42, LS = 0.43;
+    const vert = (l) => LT * Math.cos(l.thigh) + LS * Math.cos(l.shank);
+    const bob = moving ? (0.012 + 0.03 * k) * Math.abs(Math.cos(phase)) : 0;
+    const hipZ = Math.max(vert(legs[0]), vert(legs[1])) + 0.075 + bob * k;
+    return { legs, arms, lean, hipZ, k };
+  }
+
+  function rgbOf(c) {
+    if (c[0] === '#') { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+    return c.match(/\d+/g).slice(0, 3).map(Number);
+  }
+  function lerpColor(a, b, t) {
+    const pa = rgbOf(a), pb = rgbOf(b);
+    const ch = (i) => Math.round(pa[i] * (1 - t) + pb[i] * t);
+    return `rgb(${ch(0)},${ch(1)},${ch(2)})`;
+  }
+  const wetness = (mL, scale) => 1 - Math.exp(-mL / scale);
+
+  function limb(p0, ang, len, width, color) {
+    const p1 = [p0[0] + Math.sin(ang) * len, p0[1] - Math.cos(ang) * len];
+    ctx.strokeStyle = color; ctx.lineWidth = width * view.s; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(X(p0[0]), Z(p0[1])); ctx.lineTo(X(p1[0]), Z(p1[1])); ctx.stroke();
+    return p1;
+  }
+
+  function drawWalker() {
+    const moving = running && !sim.finished;
+    const g = gait(P.speed, gaitPhase, moving);
+    const c = sim.collected();
+    // the coat darkens per face; scales chosen so a soaked face reads as soaked
+    const wetTop = wetness(c.top * 1000, 3), wetFront = wetness(c.front * 1000, 10), wetBack = wetness(c.back * 1000, 10), wetSide = wetness(c.side * 1000, 8);
+    const coatBase = lerpColor(C.slicker, C.slickerDeep, 0.5 * wetSide);
+    const coatFront = lerpColor(C.slicker, C.slickerDeep, Math.min(1, wetFront + 0.5 * wetSide));
+    const coatBack = lerpColor(C.slicker, C.slickerDeep, Math.min(1, wetBack + 0.5 * wetSide));
+    const hoodCol = lerpColor(C.slicker, C.slickerDeep, Math.min(1, wetTop + 0.3 * wetSide));
+    const trousers = '#33434a', trousersFar = '#27353b', boots = '#1b2629';
+
+    const hip = [0, g.hipZ];
+    const ax = [Math.sin(g.lean), Math.cos(g.lean)];       // trunk axis
+    const nx = [Math.cos(g.lean), -Math.sin(g.lean)];      // trunk forward normal
+    const at = (s, f) => [hip[0] + ax[0] * s + nx[0] * f, hip[1] + ax[1] * s + nx[1] * f];
+    const shoulder = at(0.47, 0.0);
+
+    const drawLeg = (l, col) => {
+      const knee = limb(hip, l.thigh, 0.42, 0.13, col);
+      const ankle = limb(knee, l.shank, 0.43, 0.10, col);
+      const footAng = Math.min(0.5, Math.max(-0.9, l.shank * 0.6));
+      ctx.strokeStyle = boots; ctx.lineWidth = 0.075 * view.s; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(X(ankle[0] - 0.04), Z(ankle[1] - 0.02));
+      ctx.lineTo(X(ankle[0] + Math.cos(footAng) * 0.17), Z(ankle[1] - 0.03 + Math.sin(footAng) * 0.17)); ctx.stroke();
+    };
+    const drawArm = (a, col, hand) => {
+      const elbow = limb(shoulder, a.upper, 0.30, 0.095, col);
+      const wrist = limb(elbow, a.upper + a.elbow, 0.26, 0.085, col);
+      ctx.fillStyle = hand; ctx.beginPath(); ctx.arc(X(wrist[0]), Z(wrist[1]), 0.045 * view.s, 0, Math.PI * 2); ctx.fill();
     };
 
-    const seedCount = Math.round(Math.min(cappedParticles, spawnPerSec * Math.min(tFall, 3)));
-    for(let i=0;i<seedCount;i++){
-      const age = Math.random() * tFall;
-      const xSpawn = emitMinX + Math.random() * (emitMaxX - emitMinX);
-      const x = xSpawn + vxPix * age;
-      const z = spawnZ + vzPix * age;
-      if(z >= spawnZ && z <= groundZ){
-        sim.particles.push({x, z, vx: vxPix, vz: vzPix, wL: weightL});
-      }
-    }
+    // far side first
+    drawArm(g.arms[1], lerpColor(coatBase, '#000000', 0.18), '#c9a98d');
+    drawLeg(g.legs[1], trousersFar);
 
-    out.dropsPerM3.textContent = formatLarge(dropsPerM3);
-    out.flux.textContent = fluxLps.toFixed(2) + ' L/s';
-    out.sampleRatio.textContent = (sampleRatio*100).toFixed(1) + '%';
+    // coat body, split into back and front halves so each can darken on its own
+    const hem = -0.2;
+    const backPts = [at(hem, -0.15), at(0.1, -0.135), at(0.42, -0.125), at(0.5, -0.07), at(0.53, 0)];
+    const frontPts = [at(0.53, 0), at(0.5, 0.075), at(0.38, 0.135), at(0.12, 0.13), at(hem, 0.14)];
+    const poly = (pts, col) => {
+      ctx.fillStyle = col; ctx.beginPath();
+      pts.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Z(p[1])) : ctx.moveTo(X(p[0]), Z(p[1])));
+      ctx.lineTo(X(at(hem, 0)[0]), Z(at(hem, 0)[1])); ctx.closePath(); ctx.fill();
+    };
+    poly(backPts, coatBack);
+    poly(frontPts, coatFront);
+    // seam
+    ctx.strokeStyle = 'rgba(23, 37, 41, 0.18)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(X(at(0.5, 0.02)[0]), Z(at(0.5, 0.02)[1])); ctx.lineTo(X(at(hem, 0.04)[0]), Z(at(hem, 0.04)[1])); ctx.stroke();
 
-    logs.length = 0; logRow(0);
-  }
+    // hood and face
+    const head = at(0.68, 0.0);
+    ctx.fillStyle = hoodCol; // shoulders, then the hood
+    ctx.beginPath(); ctx.ellipse(X(at(0.49, -0.01)[0]), Z(at(0.49, -0.01)[1]), 0.15 * view.s, 0.065 * view.s, -g.lean, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(X(head[0]), Z(head[1]), 0.118 * view.s, 0.135 * view.s, g.lean, 0, Math.PI * 2); ctx.fill();
+    const face = at(0.665, 0.065);
+    ctx.fillStyle = '#d9b393';
+    ctx.beginPath(); ctx.ellipse(X(face[0]), Z(face[1]), 0.05 * view.s, 0.075 * view.s, g.lean, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.ink; // eye
+    ctx.beginPath(); ctx.arc(X(face[0] + 0.022), Z(face[1] + 0.015), Math.max(1.2, 0.009 * view.s), 0, Math.PI * 2); ctx.fill();
 
-  function rebuildAndRender(options){
-    running = false;
-    resetSim(options);
-    draw();
-    updateUI();
-  }
+    // near side
+    drawLeg(g.legs[0], trousers);
+    drawArm(g.arms[0], coatBase, '#d9b393');
 
-  function start(){
-    if(!sim || sim.dist >= sim.pathLength){
-      rebuildAndRender({ resetRunner: true });
-    }
-    running = true;
-  }
-  function pause(){ running = false; }
-  function reset(){ rebuildAndRender({ resetRunner: true }); }
-
-  qs('start').addEventListener('click', start);
-  qs('pause').addEventListener('click', pause);
-  qs('reset').addEventListener('click', reset);
-
-  function updateUI(){
-    if(!sim) return;
-    out.dist.textContent = sim.dist.toFixed(1);
-    out.time.textContent = sim.time.toFixed(1);
-    out.Ltop.textContent = `${sim.Ltop.toFixed(2)} L`;
-    out.Lfront.textContent = `${sim.Lfront.toFixed(2)} L`;
-    out.Lback.textContent = `${sim.Lback.toFixed(2)} L`;
-    out.Ltot.textContent = `${sim.Ltot.toFixed(2)} L`;
-    // Model compare
-    const m = modelKTOT(sim.VP, sim.VR, sim.theta, sim.tail);
-    const errL = sim.Ltot - m.KT; const errP = m.KT>0 ? 100*(sim.Ltot/m.KT - 1) : 0;
-    out.Kerr.textContent = `${errL.toFixed(1)} L (${errP.toFixed(1)}%)`;
-    const prog = Math.min(1, sim.dist / Math.max(1, sim.pathLength));
-    out.bar.style.width = (prog*100).toFixed(1)+'%';
-    const speedDisplay = (sim.timeScale || timeScale).toFixed(1).replace(/\.0$/, '');
-    out.speed.textContent = `${speedDisplay}×`;
-    if(sim.stats){
-      out.dropsPerM3.textContent = formatLarge(sim.stats.dropsPerM3);
-      out.flux.textContent = sim.stats.fluxLps.toFixed(2) + ' L/s';
-      out.sampleRatio.textContent = (sim.stats.sampleRatio*100).toFixed(1) + '%';
+    if ($('showBox').checked) {
+      const B = sim.body;
+      ctx.strokeStyle = C.ink; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+      ctx.strokeRect(X(B.x0), Z(B.z1), (B.x1 - B.x0) * view.s, (B.z1 - B.z0) * view.s);
+      ctx.setLineDash([]);
     }
   }
 
-  function spawn(dt){
-    // Poisson-like spawning along TOP; full VR vector advects drops
-    sim.spawnDebt += sim.spawnPerSec * dt;
-    let N = Math.min(MAX_RENDER_PARTICLES, Math.floor(sim.spawnDebt));
-    const capacity = Math.max(0, MAX_RENDER_PARTICLES - sim.particles.length);
-    if(capacity <= 0){ sim.spawnDebt = 0; return; }
-    N = Math.min(N, capacity);
-    sim.spawnDebt -= N;
-    for(let i=0;i<N;i++){
-      const x = sim.emitMinX + Math.random()*(sim.emitMaxX - sim.emitMinX);
-      const z = sim.spawnZ; // just above the top boundary
-      sim.particles.push({x, z, vx: sim.vxPix, vz: sim.vzPix, wL: sim.weightL});
-    }
-  }
-
-  function integrate(fixedDt){
-    // Person movement only while running
-    if(running){
-      person.x += (sim.VP * sim.mx) * fixedDt;
-      const maxX = sim.x1 - person.w;
-      if(person.x > maxX){ person.x = maxX; }
-      if(person.x < sim.x0){ person.x = sim.x0; }
-      sim.dist = Math.min(+inp.dL.value, sim.dist + sim.VP * fixedDt);
-      sim.time += fixedDt;
-    }
-
-    // Rain always falls; remove only on ground or player
-    const runnerVx = running ? sim.VP : 0; // m/s
-    const relVx = sim.VRx - runnerVx;
-    const relVz = sim.VRz;
-    const px0 = person.x, px1 = person.x + person.w;
-    const pz0 = sim.z1 - person.h, pz1 = sim.z1;
-    for(let k=sim.particles.length-1;k>=0;k--){
-      const p = sim.particles[k];
-      p.x += p.vx * fixedDt; p.z += p.vz * fixedDt;
-
-      // ground impact
-      if(p.z >= sim.groundZ){ sim.particles.splice(k,1); continue; }
-
-      // player impact (count only while running)
-      if(p.x>=px0 && p.x<=px1 && p.z<=pz1 && p.z>=pz0){
-        if(running){
-          const nearTop = Math.abs(p.z - pz0) <= HIT_TOL_PX;
-          const nearFront = Math.abs(p.x - px1) <= HIT_TOL_PX;
-          const nearBack = Math.abs(p.x - px0) <= HIT_TOL_PX;
-          let credited = false;
-          if(relVz > 0 && nearTop){
-            sim.Ltop += p.wL; credited = true;
-          } else if(relVx < 0 && nearFront){
-            sim.Lfront += p.wL; credited = true;
-          } else if(relVx > 0 && nearBack){
-            sim.Lback += p.wL; credited = true;
-          } else {
-            if(Math.abs(relVx) > Math.abs(relVz)){
-              if(relVx < 0){ sim.Lfront += p.wL; credited = true; }
-              else if(relVx > 0){ sim.Lback += p.wL; credited = true; }
-            }
-            if(!credited){
-              sim.Ltop += p.wL; credited = true;
-            }
-          }
-          if(credited){ sim.Ltot += p.wL; }
-        }
-        sim.particles.splice(k,1); // absorbed by player
-      }
-    }
-  }
-
-  function draw(){
-    ctx.clearRect(0,0,W(),H());
-    if(!sim) return;
-    const x0 = sim.x0, x1 = sim.x1, z0 = sim.z0, z1 = sim.z1;
-
-    // ground and bounds
-    ctx.strokeStyle = '#26355b'; ctx.lineWidth = 1;
-    ctx.strokeRect(x0, z0, x1-x0, z1-z0);
-
-    // person
-    ctx.fillStyle = 'rgba(120,160,255,0.10)';
-    ctx.strokeStyle = '#8bb6ff';
-    ctx.lineWidth = 2;
-    ctx.fillRect(person.x, z1-person.h, person.w, person.h);
-    ctx.strokeRect(person.x, z1-person.h, person.w, person.h);
-
-    // label surfaces
-    ctx.fillStyle = '#9ab7ff'; ctx.font = '12px system-ui';
-    ctx.fillText('front', person.x+person.w+6, z1-person.h/2);
-    ctx.fillText('back', person.x-34, z1-person.h/2);
-    ctx.fillText('top', person.x+2, z1-person.h-8);
-
-    // velocity arrows near top-left
-    const ax = x0 + 8, az = z0 + 24;
-    ctx.strokeStyle = '#ff8b8b';
-    arrow(ax, az, ax + 40, az); ctx.fillStyle = '#ff8b8b'; ctx.fillText('V_P', ax+44, az+4);
-    ctx.strokeStyle = '#8bd1ff';
-    const thR2 = (+inp.theta.value)*Math.PI/180;
-    const vrx_len = 26*Math.sin(thR2) * ((+inp.tailwind.value)>=0?+1:-1); const vrz_len = 26*Math.cos(thR2);
-    arrow(ax, az, ax + vrx_len, az + vrz_len);
-    ctx.fillStyle = '#8bd1ff'; ctx.fillText('V_R', ax+32, az+18);
-
-    // particles
-    ctx.fillStyle = '#7fb6ff';
-    for(const p of sim.particles){ ctx.fillRect(p.x, p.z, 2, 2); }
-  }
-
-  function arrow(x0,y0,x1,y1){
-    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
-    const ang = Math.atan2(y1-y0, x1-x0); const len=7;
+  function drawRain(behind) {
+    const moving = running && !sim.finished;
+    const ux = moving ? sim.u.x : sim.rain.Ux, uz = sim.u.z;
+    const tau = reduceMotion ? 0.012 : 0.03;
+    const sx = -ux * tau * view.s, sz = uz * tau * view.s;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = behind ? 'rgba(85, 122, 144, 0.32)' : 'rgba(64, 96, 116, 0.62)';
+    ctx.lineWidth = behind ? 1 : 1.4;
     ctx.beginPath();
-    ctx.moveTo(x1,y1);
-    ctx.lineTo(x1 - len*Math.cos(ang - Math.PI/6), y1 - len*Math.sin(ang - Math.PI/6));
-    ctx.lineTo(x1 - len*Math.cos(ang + Math.PI/6), y1 - len*Math.sin(ang + Math.PI/6));
-    ctx.closePath(); ctx.fill();
+    for (let i = 0; i < sim.count; i++) {
+      if ((sim.y[i] > 0) === behind) continue; // y > 0 is the far side of the walker
+      const px = X(sim.x[i]), pz = Z(sim.z[i]);
+      if (px < -20 || px > view.w + 20) continue;
+      ctx.moveTo(px, pz); ctx.lineTo(px + sx, pz - sz);
+    }
+    ctx.stroke();
   }
 
-  function loop(ts){
-    const dt = Math.min(0.05, (ts - lastT)/1000 || 0.016); lastT = ts; acc += dt;
-    // fixed step for numerical stability
-    const h = 1/60; // 60 Hz
-    while(acc >= h){
-      if(sim){
-        sim.timeScale = timeScale;
-        const stepDt = h * sim.timeScale;
-        const prevTime = sim.time;
-        if(sim.dist >= sim.pathLength) running = false; // stop person, keep rain
-        spawn(stepDt); integrate(stepDt); updateUI();
-        if(running && Math.floor(sim.time*10) !== Math.floor(prevTime*10)) logRow(sim.time);
+  function drawEffects(dt) {
+    // ripples on the pavement
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const r = ripples[i]; r.t += dt;
+      if (r.t > 0.5) { ripples.splice(i, 1); continue; }
+      const k = r.t / 0.5;
+      ctx.strokeStyle = `rgba(64, 96, 116, ${0.45 * (1 - k)})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(X(r.x), view.oy + view.h * (0.008 + 0.055 * r.d), (0.03 + 0.1 * k) * view.s, (0.01 + 0.025 * k) * view.s, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    // splashes off the coat
+    ctx.fillStyle = 'rgba(64, 96, 116, 0.75)';
+    for (let i = splashes.length - 1; i >= 0; i--) {
+      const s = splashes[i]; s.t += dt;
+      if (s.t > 0.28) { splashes.splice(i, 1); continue; }
+      s.x += s.vx * dt; s.z += s.vz * dt; s.vz -= 9.8 * dt;
+      ctx.beginPath(); ctx.arc(X(s.x), Z(s.z), 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawScene(dt) {
+    if (!sim || view.w === 0) return;
+    drawStreet();
+    drawRain(true);
+    drawWalker();
+    drawRain(false);
+    drawEffects(dt);
+  }
+
+  // ------------------------------------------------------------------ chart
+  const tip = $('tip');
+  let chartGeom = null, hoverSpeed = null, refinedCurve = null;
+  function niceStep(range, target) {
+    const raw = range / target, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= raw) return m * p;
+    return 10 * p;
+  }
+  function drawChart() {
+    const c = cctx, { w, h } = chartSize;
+    c.clearRect(0, 0, w, h);
+    const left = 48, right = 12, top = 12, bottom = 40;
+    const pw = w - left - right, ph = h - top - bottom;
+    if (pw < 60 || ph < 60) return;
+    const vmin = 0.4, vmax = V_MAX, N = 200;
+    const series = { total: [], top: [], front: [], back: [], side: [] };
+    for (let i = 0; i <= N; i++) {
+      const v = vmin + (vmax - vmin) * i / N;
+      const K = M.exposure(Object.assign({}, P, { speed: v }));
+      for (const k in series) series[k].push([v, K[k] * 1000]);
+    }
+    if ($('refined').checked && !refinedCurve) {
+      refinedCurve = [];
+      for (let v = vmin; v <= vmax + 1e-9; v += 0.2) refinedCurve.push([v, REF.exposure(Object.assign({}, P, { speed: v }), { res: 0.01 }).total * 1000]);
+    }
+    const atRef = M.exposure(Object.assign({}, P, { speed: 2 })).total * 1000;
+    let ymax = Math.max(atRef * 1.4, M.exposure(P).total * 1000 * 1.2);
+    const step = niceStep(ymax, 4); ymax = Math.ceil(ymax / step) * step;
+    const xs = v => left + (v - vmin) / (vmax - vmin) * pw;
+    const ys = y => top + ph - Math.min(1.03, y / ymax) * ph;
+    chartGeom = { left, top, pw, ph, vmin, vmax, xs, ys };
+
+    c.font = '13px "Atkinson Hyperlegible Next", system-ui'; c.fillStyle = C.ink2; c.strokeStyle = 'rgba(141,154,158,0.35)'; c.lineWidth = 1;
+    c.textAlign = 'right'; c.textBaseline = 'middle';
+    for (let y = 0; y <= ymax + 1e-9; y += step) {
+      c.beginPath(); c.moveTo(left, ys(y)); c.lineTo(left + pw, ys(y)); c.stroke();
+      c.fillText(+y.toFixed(2), left - 8, ys(y));
+    }
+    c.textAlign = 'center'; c.textBaseline = 'top';
+    for (let v = 1; v <= vmax; v++) c.fillText(v, xs(v), top + ph + 6);
+    c.fillText('pace (m/s)', left + pw / 2, top + ph + 22);
+    c.save(); c.translate(12, top + ph / 2); c.rotate(-Math.PI / 2); c.textBaseline = 'middle'; c.fillText('mL', 0, 0); c.restore();
+
+    c.save(); c.beginPath(); c.rect(left, top - 6, pw, ph + 6); c.clip();
+    const line = (pts, color, width, dash) => {
+      c.strokeStyle = color; c.lineWidth = width; c.lineJoin = 'round'; c.setLineDash(dash || []);
+      c.beginPath(); pts.forEach(([v, y], i) => i ? c.lineTo(xs(v), ys(y)) : c.moveTo(xs(v), ys(y))); c.stroke(); c.setLineDash([]);
+    };
+    for (const k of ['side', 'back', 'front', 'top']) if (series[k].some(([, y]) => y > 1e-9)) line(series[k], C[k], 2);
+    line(series.total, C.ink, 3);
+    if (refinedCurve) line(refinedCurve, C.ink, 2, [6, 4]);
+
+    // your pace
+    const K = M.exposure(P).total * 1000;
+    c.strokeStyle = C.ink2; c.setLineDash([2, 4]); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(xs(P.speed), top); c.lineTo(xs(P.speed), top + ph); c.stroke(); c.setLineDash([]);
+    c.fillStyle = C.slicker; c.strokeStyle = C.ink; c.lineWidth = 2.5;
+    c.beginPath(); c.arc(xs(P.speed), ys(K), 7, 0, Math.PI * 2); c.fill(); c.stroke();
+
+    // best pace
+    const opt = M.optimalSpeed(P, V_MAX);
+    const Ko = M.exposure(Object.assign({}, P, { speed: opt.speed })).total * 1000;
+    c.fillStyle = C.ink; c.beginPath(); c.arc(xs(opt.speed), ys(Ko), 5, 0, Math.PI * 2); c.fill();
+
+    // simulated points with ±2σ
+    c.strokeStyle = C.ink; c.lineWidth = 1.5;
+    for (const p of sweepPoints) {
+      const x = xs(p.speed);
+      c.beginPath(); c.moveTo(x, ys((p.total - 2 * p.sigma) * 1000)); c.lineTo(x, ys((p.total + 2 * p.sigma) * 1000)); c.stroke();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(x, ys(p.total * 1000), 4.5, 0, Math.PI * 2); c.fill(); c.stroke();
+    }
+    c.restore();
+
+    // labels
+    c.font = '600 13px "Atkinson Hyperlegible Next", system-ui'; c.fillStyle = C.ink; c.textBaseline = 'bottom';
+    const lbl = (x, y, t) => { c.textAlign = x > left + pw - 120 ? 'right' : 'left'; c.fillText(t, x + (c.textAlign === 'right' ? -10 : 10), y - 8); };
+    lbl(xs(P.speed), ys(K), 'you');
+    if (Math.abs(opt.speed - P.speed) > 0.3) lbl(xs(opt.speed), ys(Ko), 'best');
+
+    if (hoverSpeed != null) {
+      c.strokeStyle = C.ink2; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(xs(hoverSpeed), top); c.lineTo(xs(hoverSpeed), top + ph); c.stroke();
+    }
+  }
+  ch.addEventListener('pointermove', (e) => {
+    if (!chartGeom || e.pointerType === 'touch') return;
+    const r = ch.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, g = chartGeom;
+    if (mx < g.left || mx > g.left + g.pw) { hoverSpeed = null; tip.style.display = 'none'; drawChart(); return; }
+    hoverSpeed = g.vmin + (mx - g.left) / g.pw * (g.vmax - g.vmin);
+    const K = M.exposure(Object.assign({}, P, { speed: hoverSpeed }));
+    const names = { top: 'Hood and shoulders', front: 'Chest', back: 'Back', side: 'Side' };
+    let html = `<b>${hoverSpeed.toFixed(1)} m/s, a ${paceWord(hoverSpeed)} of ${formatTime(K.duration)}</b>Total ${fmt(K.total)} mL<br>`;
+    for (const f of FACES) if (K[f] > 1e-9) html += `<i style="background:${C[f]}"></i>${names[f]} ${fmt(K[f])} mL<br>`;
+    if (refinedCurve) {
+      const rv = refinedCurve.reduce((a, b) => Math.abs(b[0] - hoverSpeed) < Math.abs(a[0] - hoverSpeed) ? b : a);
+      html += `Realistic estimate ${rv[1].toFixed(1)} mL<br>`;
+    }
+    const sp = sweepPoints.find(p => Math.abs(g.xs(p.speed) - mx) < 8);
+    if (sp) html += `Simulated ${(sp.total * 1000).toFixed(1)} ± ${(sp.sigma * 1000).toFixed(1)} mL<br>`;
+    tip.innerHTML = html; tip.style.display = 'block';
+    const tw = tip.offsetWidth;
+    tip.style.left = (mx + 16 + tw > r.width ? mx - tw - 16 : mx + 16) + 'px';
+    tip.style.top = Math.max(0, my - 60) + 'px';
+    drawChart();
+  });
+  ch.addEventListener('pointerleave', () => { hoverSpeed = null; tip.style.display = 'none'; drawChart(); });
+  ch.addEventListener('click', (e) => {
+    const r = ch.getBoundingClientRect(), g = chartGeom; if (!g) return;
+    const v = g.vmin + (e.clientX - r.left - g.left) / g.pw * (g.vmax - g.vmin);
+    if (v < g.vmin || v > g.vmax) return;
+    $('speed').value = (Math.round(v * 10) / 10).toFixed(1);
+    rebuild({ keepSweep: true });
+  });
+
+  // headless validation sweep
+  $('sweep').addEventListener('click', () => {
+    const token = ++sweepToken;
+    sweepPoints = [];
+    const speeds = [0.6, 1, 1.4, 2, 2.6, 3.3, 4, 5, 6, 7, 8];
+    const opt = M.optimalSpeed(P, V_MAX);
+    if (opt.regime === 'match-wind' && !speeds.some(s => Math.abs(s - opt.speed) < 0.05)) speeds.push(opt.speed);
+    speeds.sort((a, b) => a - b);
+    const btn = $('sweep'); btn.disabled = true;
+    const base = Object.assign({}, P);
+    let i = 0;
+    (function next() {
+      if (token !== sweepToken) return;
+      if (i >= speeds.length) { btn.disabled = false; btn.textContent = 'Simulate all paces'; return; }
+      btn.textContent = `Simulating ${i + 1} of ${speeds.length}`;
+      const p = Object.assign({}, base, { speed: speeds[i] });
+      const trip = p.distance / p.speed;
+      const r = M.simulate(p, { duration: Math.min(trip, 25), targetParcels: 2500, seed: 1000 + i });
+      const scale = trip / r.time;
+      sweepPoints.push({ speed: p.speed, total: r.total * scale, sigma: r.totalSigma * scale });
+      drawChart(); i++; setTimeout(next, 0);
+    })();
+  });
+
+  // ------------------------------------------------------------------ loop
+  const H_STEP = 1 / 120;
+  let lastT = performance.now(), acc = 0, uiTimer = 0, lastLog = -1;
+  function frame(ts) {
+    const real = Math.min(0.05, (ts - lastT) / 1000); lastT = ts;
+    acc += real * playback;
+    let steps = 0;
+    const moving0 = running && !sim.finished;
+    while (acc >= H_STEP && steps < 600) {
+      const moving = running && !sim.finished;
+      sim.step(H_STEP, moving);
+      if (moving) {
+        worldX += P.speed * H_STEP;
+        if (!reduceMotion) for (const hit of sim.lastHits) {
+          if (splashes.length > 260) break;
+          for (let k = 0; k < 2; k++) splashes.push({ x: hit.x, z: hit.z, vx: (hit.face === 'back' ? -0.6 : hit.face === 'front' ? 0.6 : 0) + (Math.random() - 0.5) * 0.8, vz: 0.6 + Math.random() * 0.8, t: 0 });
+        }
+        if (sim.time - lastLog >= 0.5 || sim.finished) { logRow(); lastLog = sim.time; }
+      } else {
+        worldX += 0;
       }
-      acc -= h;
+      if (!reduceMotion) for (const gh of sim.lastGround) {
+        if (ripples.length > 140 || Math.random() > 0.35) continue;
+        ripples.push({ x: gh.x, d: Math.random(), t: 0 });
+      }
+      acc -= H_STEP; steps++;
     }
-    draw();
-    rafId = requestAnimationFrame(loop);
+    if (steps >= 600) acc = 0;
+    if (moving0) {
+      // stride length grows with speed: about 1.6 m per cycle walking, 2.6 m jogging
+      const stride = 1.05 + 0.45 * P.speed;
+      gaitPhase += 2 * Math.PI * (P.speed / stride) * real * Math.min(playback, 3);
+    } else {
+      gaitPhase = 0;
+    }
+    if (running && sim.finished) { running = false; updatePlayButton(); drawChart(); }
+    uiTimer += real;
+    if (uiTimer > 0.1) { uiTimer = 0; updateSimTexts(); }
+    drawScene(real * Math.min(playback, 3));
+    requestAnimationFrame(frame);
+  }
+  function logRow() {
+    const c = sim.collected();
+    timeline.push([sim.time.toFixed(2), sim.distance.toFixed(2), P.speed, P.windSpeed, P.windDirDeg, P.rainRateMmH, P.dropDiamMm,
+      ...FACES.map(f => (c[f] * 1000).toFixed(4)), (c.total * 1000).toFixed(4), (c.totalSigma * 1000).toFixed(4)]);
   }
 
-  // ---- Self-tests (model sanity against paper numbers) ----
-  function approx(a,b,eps){ return Math.abs(a-b) <= eps; }
-  function runTests(){
-    const cases = [
-      // Walking cases (from paper table)
-      {name:'Vertical rain (walk)', VP:1.4, VR:6, th:0, tail:0, expect:255.5, tol:6.0},
-      {name:'Headwind 30° (walk)', VP:1.4, VR:4, th:30, tail:-1, expect:138.9, tol:6.0},
-      {name:'Tailwind 45° (walk)', VP:1.4, VR:6, th:45, tail:1, expect:416.6, tol:8.0},
-      {name:'Tailwind 60° (walk)', VP:1.4, VR:6, th:60, tail:1, expect:414.0, tol:8.0},
-      // Running cases (from paper table)
-      {name:'Vertical rain (run)', VP:3.3, VR:6, th:0, tail:0, expect:145.0, tol:6.0},
-      {name:'Headwind 30° (run)', VP:3.3, VR:4, th:30, tail:-1, expect:72.5, tol:6.0},
-      {name:'Tailwind 45° (run)', VP:3.3, VR:6, th:45, tail:1, expect:244.9, tol:8.0},
-      {name:'Tailwind 60° (run)', VP:3.3, VR:6, th:60, tail:1, expect:243.8, tol:8.0}
-    ];
-
-    // Extra invariant tests: flux through ground without runner ~= C*VRz*width (computed target)
-    const th = +inp.theta.value; const VR = +inp.vr.value; const VRz = VR*Math.cos(th*Math.PI/180);
-    const width_m = Math.max(1, +inp.dL.value);
-    const fluxExpected = (+inp.conc.value) * VRz * width_m * Math.max(0.1, +inp.depth.value || 0.5);
-
-    let pass=0, fail=0; const lines=[];
-    for(const c of cases){
-      const km = modelKTOT(c.VP,c.VR,c.th,c.tail).KT; const ok = approx(km,c.expect,c.tol);
-      if(ok){ pass++; } else { fail++; }
-      lines.push(`${c.name}: model=${km.toFixed(1)} L vs ${c.expect} L => ${ok?'PASS':'FAIL'}`);
+  // ------------------------------------------------------------------ self-checks
+  function runTests() {
+    const res = [];
+    const t = (name, ok, detail) => res.push({ name, ok, detail });
+    const base = { speed: 1.4, distance: 200, rainRateMmH: 5, dropDiamMm: 2 };
+    const r = M.rainState(base);
+    t('Rain rate equals water content × fall speed', Math.abs(r.C * r.vt * 3.6e6 - 5) < 1e-9, `${(r.C * r.vt * 3.6e6).toFixed(3)} mm/h`);
+    const still = M.exposure(base), head = M.exposure(Object.assign({}, base, { windSpeed: 2, windDirDeg: 180 }));
+    t('A headwind wets the chest more', head.front > still.front, `${fmt(head.front)} vs ${fmt(still.front)} mL`);
+    const match = M.exposure(Object.assign({}, base, { speed: 3, windSpeed: 3 }));
+    t('Matching a tailwind keeps chest and back dry', match.front + match.back < 1e-12, `${fmt(match.front + match.back, 3)} mL`);
+    for (const [name, extra] of [['still air', {}], ['tailwind 4 m/s', { windSpeed: 4 }], ['quartering wind', { windSpeed: 3, windDirDeg: 135 }]]) {
+      const p = Object.assign({}, base, extra);
+      const s = M.simulate(p, { duration: 15, targetParcels: 2500, seed: 42 });
+      const K = M.exposure(p), scale = K.duration / s.time;
+      const z = (s.total * scale - K.total) / (s.totalSigma * scale);
+      t(`Simulation matches the formula, ${name}`, Math.abs(z) < 3.5, `${fmt(s.total * scale)} vs ${fmt(K.total)} mL (${z.toFixed(1)}σ)`);
     }
-    lines.push(`Flux sanity (no runner): expected ≈ ${fluxExpected.toFixed(2)} L/s`);
-
-    testsEl.innerHTML = `Tests: <span class="${fail? 'fail':'pass'}">${pass}/${pass+fail} ${fail? 'with failures':''}</span><br>` + lines.join('<br>');
+    const pass = res.filter(x => x.ok).length;
+    $('tests').innerHTML = `<span class="${pass === res.length ? 'ok' : 'bad'}">${pass} of ${res.length} passed</span><br>` +
+      res.map(x => `${x.ok ? '✓' : '✗'} ${x.name}: ${x.detail}`).join('<br>');
   }
 
-  // Initial setup
-  highlightPreset(preset.value);
-  applyUI();
-  rebuildAndRender({ resetRunner: true });
-  runTests();
-  lastT = performance.now();
-  rafId = requestAnimationFrame(loop);
+  // ------------------------------------------------------------------ start
+  buildTicks();
+  layout();
+  new ResizeObserver(() => { layout(); drawChart(); }).observe(document.body);
+  rebuild();
+  drawDial();
+  requestAnimationFrame(frame);
+  setTimeout(runTests, 400);
 })();
 </script>
 </body>
+</html>
