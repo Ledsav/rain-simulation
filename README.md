@@ -76,18 +76,35 @@ sharp optimum flattens.
 
 ## Run it locally
 
-No build step and no dependencies.
+No build step and no dependencies. You need Node.js 20+ for the tests and scripts. To view the app, serve the
+repository with any static server (Python's is used here), or open `src/simulation.html` directly.
 
 ```bash
+git clone https://github.com/Ledsav/rain-simulation.git
+cd rain-simulation
 python -m http.server          # from the repository root
 # then open http://localhost:8000/
 ```
+
+In VS Code, **Terminal → Run Task… → Setup (fresh clone)** just runs the test suite (there is nothing to install),
+and **Dev** starts the static server.
 
 ```bash
 node --test tests/             # 25 tests: physics, Monte Carlo agreement, airflow, body mesh, experiment analysis
 node scripts/analysis.js       # reproduces every number in the paper's later sections
 node experiment/simulate-campaign.js   # power analysis for the field experiment
 ```
+
+**The paper.** `docs/Rain_model.pdf` is committed. To rebuild it, run the **Paper: build PDF** task, or
+`pdflatex Rain_model.tex` twice from `docs/` (for the references). It needs a TeX distribution (MiKTeX or TeX Live)
+with `pgfplots`, `siunitx` and `booktabs`. The body figure is a manual step:
+`node scripts/render-body.js > docs/figures/body_poses.svg`, then export that SVG to `docs/figures/body_poses.png`
+(the file the paper and this README use) with any SVG editor or converter. In Windows PowerShell 5.1, `>` writes
+UTF-16, so run this redirect, and `node scripts/build-aero-table.js > src/aero-table.js`, from Git Bash or `cmd`.
+
+**Deploying.** GitHub Pages serves the `main` branch from the repository root (**Settings → Pages → Deploy from a
+branch → main / (root)**); `.nojekyll` makes it serve the files as they are. Pushing to `main` updates
+https://www.albertovaldesrey.com/rain-simulation/.
 
 <details>
 <summary><b>Project layout</b></summary>

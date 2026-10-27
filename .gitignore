@@ -1,0 +1,6 @@
+# LaTeX build files (docs/Rain_model.pdf itself is committed)
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz

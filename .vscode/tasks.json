@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "setup: run tests",
+      "detail": "No dependencies to install: the Node test suite is the whole check",
+      "type": "shell",
+      "command": "node --test tests/",
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup (fresh clone)",
+      "detail": "Nothing to install; runs node --test tests/ to verify the clone",
+      "dependsOrder": "sequence",
+      "dependsOn": ["setup: run tests"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev",
+      "detail": "Static server on http://localhost:8000/ (any static server works)",
+      "type": "shell",
+      "command": "python3 -m http.server 8000",
+      "windows": {"command": "python -m http.server 8000"},
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "node --test tests/",
+      "problemMatcher": [],
+      "group": {"kind": "test", "isDefault": true}
+    },
+    {
+      "label": "paper: pdflatex first pass",
+      "type": "shell",
+      "options": {"cwd": "${workspaceFolder}/docs"},
+      "command": "pdflatex -interaction=nonstopmode -halt-on-error Rain_model.tex",
+      "problemMatcher": []
+    },
+    {
+      "label": "Paper: build PDF",
+      "detail": "Two pdflatex passes (for references) -> docs/Rain_model.pdf; needs pgfplots, siunitx, booktabs",
+      "type": "shell",
+      "options": {"cwd": "${workspaceFolder}/docs"},
+      "command": "pdflatex -interaction=nonstopmode -halt-on-error Rain_model.tex",
+      "dependsOn": ["paper: pdflatex first pass"],
+      "problemMatcher": []
+    }
+  ]
+}
